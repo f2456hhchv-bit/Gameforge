@@ -1,5 +1,5 @@
 import { createCollectionView } from '../components/collectionView.js';
-import { BIOME_TYPES, WEATHER_BY_BIOME, RESOURCE_BASE, HAZARD_BASE, FACTION_PREFIXES, FACTION_SUFFIXES, CONTINENT_ADJECTIVES, CONTINENT_NOUNS } from '../generators/wordbank.js';
+import { BIOME_TYPES, WEATHER_BY_BIOME, RESOURCE_BASE, HAZARD_BASE, FACTION_PREFIXES, FACTION_SUFFIXES, CONTINENT_ADJECTIVES, CONTINENT_NOUNS, CLIMATES, POLITICAL_STRUCTURES, REPUTATION_TIERS } from '../generators/wordbank.js';
 import { rngFor, generateBiomeName, generateBiomeLore, generateFactionName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 import { autoTask } from '../taskHooks.js';
@@ -8,6 +8,8 @@ export const SUBTYPES = [
   { key: 'biome', label: 'Biome', icon: '🌳' },
   { key: 'region', label: 'Region', icon: '🗺️' },
   { key: 'city', label: 'City', icon: '🏙️' },
+  { key: 'settlement', label: 'Settlement', icon: '🏘️' },
+  { key: 'landmark', label: 'Landmark / POI', icon: '🗿' },
   { key: 'planet', label: 'Planet', icon: '🪐' },
   { key: 'galaxy', label: 'Galaxy', icon: '🌌' },
   { key: 'faction', label: 'Faction', icon: '🚩' },
@@ -16,6 +18,7 @@ export const SUBTYPES = [
 const PLACE_FIELDS = [
   { key: 'biomeType', label: 'Biome Type', type: 'select', options: [{ value: '', label: '— N/A —' }, ...BIOME_TYPES.map(b => ({ value: b.key, label: b.label }))] },
   { key: 'weather', label: 'Weather Patterns', type: 'list', placeholder: 'e.g. Sandstorms' },
+  { key: 'climate', label: 'Climate', type: 'text', placeholder: 'e.g. Arid, temperate, subarctic' },
   { key: 'lore', label: 'Lore & History', type: 'textarea', cols: 2, placeholder: 'Deep history, myths, past events…' },
   { key: 'resources', label: 'Resources', type: 'list', placeholder: 'e.g. Iron Ore' },
   { key: 'hazards', label: 'Hazards', type: 'list', placeholder: 'e.g. Poison spores' },
@@ -28,6 +31,8 @@ const FACTION_FIELDS = [
   { key: 'ideology', label: 'Ideology / Motto', type: 'textarea', cols: 2 },
   { key: 'leader', label: 'Leader', type: 'text' },
   { key: 'territory', label: 'Territory', type: 'text' },
+  { key: 'politicalStructure', label: 'Political Structure', type: 'select', options: POLITICAL_STRUCTURES },
+  { key: 'reputationTiers', label: 'Reputation Tiers', type: 'list', placeholder: 'e.g. Hostile, Neutral, Friendly, Allied' },
   { key: 'goals', label: 'Goals', type: 'list' },
   { key: 'allies', label: 'Allies', type: 'list' },
   { key: 'enemies', label: 'Enemies', type: 'list' },
@@ -52,6 +57,7 @@ export function generatePlace(rng, subtype) {
     description: `A ${type.label.toLowerCase()} ${subtype}.`,
     lore: generateBiomeLore(rng, type.label),
     weather: pickN(WEATHER_BY_BIOME[type.key] || [], 2, rng),
+    climate: pick(CLIMATES, rng),
     resources: pickN(RESOURCE_BASE, 3, rng),
     hazards: pickN(HAZARD_BASE, 2, rng),
     factionsPresent: [],
@@ -66,6 +72,8 @@ export function generateFaction(rng) {
     description: 'An organized group with its own agenda.',
     ideology: 'Believes strength and order must be restored to a broken world.',
     leader: '', territory: '',
+    politicalStructure: pick(POLITICAL_STRUCTURES, rng),
+    reputationTiers: [...REPUTATION_TIERS],
     goals: ['Expand influence', 'Secure resources', 'Eliminate rivals'],
     allies: [], enemies: [],
   };
@@ -83,7 +91,7 @@ export function generateContinent(rng, subtype) {
 }
 
 const GENERATORS = [
-  { label: 'Generate Place (biome/region/city/planet/galaxy)', run: ({ subtype }) => generatePlace(rngFor(Math.random()), subtype || 'biome') },
+  { label: 'Generate Place (biome/region/city/settlement/landmark/planet/galaxy)', run: ({ subtype }) => generatePlace(rngFor(Math.random()), subtype || 'biome') },
   { label: 'Generate Faction', run: () => generateFaction(rngFor(Math.random())) },
   { label: 'Generate Continent (large-scale, multi-biome)', run: ({ subtype }) => generateContinent(rngFor(Math.random()), subtype) },
 ];
@@ -93,7 +101,7 @@ export function mountWorld(container, opts) {
     key: 'biomes', singular: 'World Entry', plural: 'World Entries', icon: '🌍',
     subtypes: SUBTYPES,
     fields: fieldsFor,
-    makeDefaults: (subtype) => subtype === 'faction' ? { goals: [], allies: [], enemies: [] } : { weather: [], resources: [], hazards: [], factionsPresent: [], npcPopulation: [] },
+    makeDefaults: (subtype) => subtype === 'faction' ? { goals: [], allies: [], enemies: [], reputationTiers: [] } : { weather: [], resources: [], hazards: [], factionsPresent: [], npcPopulation: [] },
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
@@ -102,7 +110,7 @@ export function mountWorld(container, opts) {
       title: (i) => `Build out: ${i.name}`,
       description: `Environment/world-building pass for "${item.name}".`,
     }),
-    helpText: 'Biomes, regions, cities, planets, galaxies and factions — everything else (characters, items, levels) can link back here.',
+    helpText: 'Biomes, regions, cities, settlements, landmarks/POIs, planets, galaxies and factions — everything else (characters, items, levels) can link back here. Factions now track political structure and reputation tiers.',
   });
   return view.mount(container, opts);
 }

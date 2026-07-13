@@ -83,6 +83,10 @@ export const HAZARD_BASE = [
   'Sinkholes', 'Contaminated water sources', 'Sound-triggered rockfalls', 'Feral spirit hauntings',
 ];
 
+export const CLIMATES = ['Arid desert', 'Tropical humid', 'Temperate seasonal', 'Subarctic', 'Polar', 'Mediterranean', 'Monsoon', 'Alpine', 'Continental', 'Oceanic'];
+export const POLITICAL_STRUCTURES = ['Monarchy', 'Council/Oligarchy', 'Theocracy', 'Democracy', 'Military Junta', 'Corporate', 'Anarchic/Leaderless'];
+export const REPUTATION_TIERS = ['Hostile', 'Unfriendly', 'Neutral', 'Friendly', 'Honored', 'Allied'];
+
 export const FACTION_PREFIXES = ['Iron', 'Silver', 'Ember', 'Shadow', 'Storm', 'Blood', 'Gilded', 'Grey', 'Sun', 'Void',
   'Ash', 'Coral', 'Onyx', 'Copper', 'Ivory', 'Crimson', 'Frost', 'Thorn', 'Amber', 'Obsidian',
   'Dawn', 'Dusk', 'Salt', 'Wolf', 'Raven', 'Cinder', 'Moss', 'Starling', 'Bramble', 'Hollow'];

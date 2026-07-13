@@ -16,6 +16,9 @@ const FIELDS = [
   { key: 'checkpoints', label: 'Checkpoints', type: 'list' },
   { key: 'rewardPlacement', label: 'Reward Placement', type: 'textarea', cols: 2 },
   { key: 'navigationNotes', label: 'Navigation / Wayfinding', type: 'textarea', cols: 2 },
+  { key: 'pacingCurve', label: 'Pacing Curve', type: 'textarea', cols: 2, placeholder: 'How tension/intensity rises and falls across the level…' },
+  { key: 'difficultySpikeNotes', label: 'Difficulty Spike Notes', type: 'textarea', cols: 2, placeholder: 'Where difficulty spikes above the surrounding baseline, and why…' },
+  { key: 'backtrackShortcuts', label: 'Backtrack Shortcuts', type: 'list', placeholder: 'e.g. Locked door near the entrance opens from the far side after the midpoint' },
   { key: 'proceduralRules', label: 'Procedural Generation Rules', type: 'textarea', cols: 2 },
   { key: 'enemies', label: 'Enemies Present', type: 'relation-multi', target: 'characters' },
   { key: 'lootTable', label: 'Loot Table', type: 'relation-multi', target: 'items' },
@@ -40,6 +43,9 @@ export function generateLevel(rng) {
     checkpoints: ['Level Start', 'Midpoint', 'Pre-Boss'],
     rewardPlacement: 'Main path rewards are guaranteed; side paths hide higher-rarity loot.',
     navigationNotes: 'Critical path is lit warmer; optional branches are cooler-toned.',
+    pacingCurve: 'Opens quiet, ramps through two escalating combat beats, dips for a breather room, then peaks at the boss/finale.',
+    difficultySpikeNotes: rng() < 0.5 ? 'A mid-level ambush spikes above the surrounding baseline to keep the player from coasting.' : '',
+    backtrackShortcuts: rng() < 0.5 ? ['A shortcut near the midpoint reopens the path back to the hub, saving a full backtrack.'] : [],
     proceduralRules: '',
     links: {},
   };
@@ -54,7 +60,7 @@ export function mountLevels(container, opts) {
     key: 'levels', singular: 'Level', plural: 'Levels', icon: '🗺️',
     subtypes: null,
     fields: FIELDS,
-    makeDefaults: () => ({ rooms: [], objectives: [], events: [], secrets: [], puzzles: [], checkpoints: [] }),
+    makeDefaults: () => ({ rooms: [], objectives: [], events: [], secrets: [], puzzles: [], checkpoints: [], backtrackShortcuts: [] }),
     cardBadges: () => [],
     cardMeta,
     generators: GENERATORS,
@@ -62,7 +68,7 @@ export function mountLevels(container, opts) {
       category: 'design', estimateHours: 10, title: (i) => `Build level: ${i.name}`,
       description: `Whitebox, populate and playtest "${item.name}" (${item.layoutType || 'level'}).`,
     }),
-    helpText: 'Levels with rooms, objectives, events, secrets, puzzles, checkpoints, reward placement and navigation notes.',
+    helpText: 'Levels with rooms, objectives, events, secrets, puzzles, checkpoints, reward placement, navigation notes, pacing curve, difficulty spikes and backtrack shortcuts.',
   });
   return view.mount(container, opts);
 }
