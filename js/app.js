@@ -38,7 +38,7 @@ async function createProjectWithTemplate(name) {
     openModal(templatePickerContent(t => { closeTopModal(); resolve(t); }), { title: `Choose a starting point for "${name}"`, width: '640px' });
   });
   const project = store.newProject(name, template.meta || {});
-  if (template.apply) {
+  if (template.key !== 'blank') {
     store.snapshot();
     template.apply();
     store.commit(`Apply ${template.label} starter pack`);
@@ -169,18 +169,26 @@ function renderTopbar() {
 
   const saveIndicator = h('span', { id: 'save-indicator', class: 'text-xs text-slate-400 flex items-center gap-1' }, ['●', ' Saved']);
 
-  const undoBtn = h('button', { class: 'btn-icon', title: 'Undo (Ctrl+Z)', onclick: () => { store.undo(); } }, '↺');
-  const redoBtn = h('button', { class: 'btn-icon', title: 'Redo (Ctrl+Shift+Z)', onclick: () => { store.redo(); } }, '↻');
+  const undoBtn = h('button', {
+    class: 'btn-icon', title: 'Undo (Ctrl+Z)', 'aria-label': 'Undo', disabled: !store.canUndo(),
+    onclick: () => { store.undo(); },
+  }, '↺');
+  const redoBtn = h('button', {
+    class: 'btn-icon', title: 'Redo (Ctrl+Shift+Z)', 'aria-label': 'Redo', disabled: !store.canRedo(),
+    onclick: () => { store.redo(); },
+  }, '↻');
 
-  const themeBtn = h('button', { class: 'btn-icon', title: 'Toggle dark mode', onclick: toggleTheme }, document.documentElement.classList.contains('dark') ? '☀️' : '🌙');
-  const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
-  const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', onclick: openBackupMenu }, '⋮');
+  const isDark = document.documentElement.classList.contains('dark');
+  const themeBtn = h('button', { class: 'btn-icon', title: 'Toggle dark mode', 'aria-label': isDark ? 'Switch to light mode' : 'Switch to dark mode', onclick: toggleTheme }, isDark ? '☀️' : '🌙');
+  const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', 'aria-label': 'Search', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
+  const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', 'aria-label': 'Project backup menu', onclick: openBackupMenu }, '⋮');
+  const helpBtn = h('button', { class: 'btn-icon', title: 'Keyboard shortcuts (?)', 'aria-label': 'Keyboard shortcuts', onclick: openShortcutsModal }, '⌨');
   const assistantBtn = h('button', { class: 'btn-secondary text-sm', title: 'AI Assistant', onclick: toggleAssistant }, ['🤖 Assistant']);
 
   bar.append(
     h('div', { class: 'flex items-center gap-1' }, [projSwitch]),
     h('div', { class: 'flex-1 flex justify-center' }, [searchBtn]),
-    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, backupBtn, assistantBtn]),
+    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, helpBtn, backupBtn, assistantBtn]),
   );
 }
 
@@ -339,12 +347,33 @@ function openCommandPalette() {
   setTimeout(() => input.focus(), 30);
 }
 
+function isTypingTarget(el) {
+  return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+}
+
+const SHORTCUTS = [
+  { keys: 'Ctrl K', desc: 'Open search (modules & every entity)' },
+  { keys: 'Ctrl Z', desc: 'Undo' },
+  { keys: 'Ctrl Shift Z', desc: 'Redo (Ctrl Y also works)' },
+  { keys: '?', desc: 'Show this shortcuts cheatsheet' },
+  { keys: 'Esc', desc: 'Close the topmost modal' },
+];
+
+function openShortcutsModal() {
+  const content = h('div', { class: 'flex flex-col gap-1' }, SHORTCUTS.map(s => h('div', { class: 'flex items-center justify-between py-1.5 border-b border-surface-3/60 last:border-0' }, [
+    h('span', { class: 'text-sm text-slate-600 dark:text-slate-300' }, s.desc),
+    h('kbd', { class: 'text-xs bg-surface-2 px-2 py-1 rounded font-mono' }, s.keys),
+  ])));
+  openModal(content, { title: 'Keyboard Shortcuts', width: '420px' });
+}
+
 function wireKeyboardShortcuts() {
   document.addEventListener('keydown', e => {
     const meta = e.ctrlKey || e.metaKey;
     if (meta && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
     else if (meta && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); store.redo(); }
     else if (meta && e.key.toLowerCase() === 'k') { e.preventDefault(); openCommandPalette(); }
+    else if (e.key === '?' && !isTypingTarget(e.target)) { e.preventDefault(); openShortcutsModal(); }
   });
 }
 
@@ -373,7 +402,10 @@ function renderShell() {
   ]));
   renderSidebar();
   renderTopbar();
-  store.on((project, reason) => updateSaveIndicator(reason));
+  store.on((project, reason) => {
+    if (reason === 'dirty' || reason === 'saved') updateSaveIndicator(reason);
+    else renderTopbar();
+  });
   openTab('dashboard');
 }
 

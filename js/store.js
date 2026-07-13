@@ -173,14 +173,14 @@ class Store {
     }
   }
 
-  duplicate(collectionKey, id) {
+  duplicate(collectionKey, id, { commit = true } = {}) {
     const item = this.get(collectionKey, id);
     if (!item) return null;
     const copy = JSON.parse(JSON.stringify(item));
     copy.id = uid(collectionKey);
     copy.name = (copy.name || 'Untitled') + ' (Copy)';
     copy.createdAt = nowISO();
-    this.upsert(collectionKey, copy, { label: `Duplicate ${copy.name}` });
+    this.upsert(collectionKey, copy, { commit, label: `Duplicate ${copy.name}` });
     return copy;
   }
 

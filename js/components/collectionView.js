@@ -21,7 +21,7 @@ export function createCollectionView(config) {
     helpText = '',
   } = config;
 
-  let state = { search: '', subtypeFilter: 'all', sort: 'updated', selectedId: null, tagFilter: null, listWidth: 320 };
+  let state = { search: '', subtypeFilter: 'all', sort: 'updated', selectedId: null, tagFilter: null, listWidth: 320, checked: new Set(), bulkMode: false };
   let unsubscribe = null;
   let rootEl = null;
 
@@ -163,9 +163,19 @@ export function createCollectionView(config) {
     }
     items.forEach(item => {
       const badges = cardBadges(item) || [];
+      const isChecked = state.checked.has(item.id);
+      const checkbox = state.bulkMode && h('input', {
+        type: 'checkbox', checked: isChecked, class: 'h-4 w-4 rounded accent-accent mt-0.5 shrink-0',
+        'aria-label': `Select ${item.name || 'item'}`,
+        onclick: e => e.stopPropagation(),
+        onchange: () => { isChecked ? state.checked.delete(item.id) : state.checked.add(item.id); renderListOnly(); renderBulkBarOnly(); },
+      });
       const row = h('div', {
-        class: `rounded-lg px-3 py-2.5 cursor-pointer border transition-colors ${state.selectedId === item.id ? 'bg-accent-muted border-accent/40' : 'border-transparent hover:bg-surface-2'}`,
-        onclick: () => { state.selectedId = item.id; render(); },
+        class: `rounded-lg px-3 py-2.5 cursor-pointer border transition-colors flex gap-2 ${state.selectedId === item.id && !state.bulkMode ? 'bg-accent-muted border-accent/40' : isChecked ? 'bg-accent-muted/50 border-accent/30' : 'border-transparent hover:bg-surface-2'}`,
+        onclick: () => {
+          if (state.bulkMode) { isChecked ? state.checked.delete(item.id) : state.checked.add(item.id); renderListOnly(); renderBulkBarOnly(); }
+          else { state.selectedId = item.id; render(); }
+        },
         oncontextmenu: e => {
           e.preventDefault();
           import('./ui.js').then(({ contextMenu }) => contextMenu([
@@ -174,15 +184,77 @@ export function createCollectionView(config) {
           ], e.clientX, e.clientY));
         },
       }, [
-        h('div', { class: 'flex items-center justify-between gap-2' }, [
-          h('span', { class: 'font-medium text-sm truncate' }, item.name || '(unnamed)'),
+        checkbox,
+        h('div', { class: 'flex-1 min-w-0' }, [
+          h('div', { class: 'flex items-center justify-between gap-2' }, [
+            h('span', { class: 'font-medium text-sm truncate' }, item.name || '(unnamed)'),
+          ]),
+          h('div', { class: 'flex items-center gap-1.5 mt-1 flex-wrap' }, badges.map(b => h('span', { class: b.cls || 'badge-gray' }, b.text))),
+          cardMeta(item) && h('div', { class: 'text-xs text-slate-400 mt-1 truncate' }, cardMeta(item)),
         ]),
-        h('div', { class: 'flex items-center gap-1.5 mt-1 flex-wrap' }, badges.map(b => h('span', { class: b.cls || 'badge-gray' }, b.text))),
-        cardMeta(item) && h('div', { class: 'text-xs text-slate-400 mt-1 truncate' }, cardMeta(item)),
-      ]);
+      ].filter(Boolean));
       listEl.appendChild(row);
     });
     return listEl;
+  }
+
+  function bulkDeleteSelected() {
+    if (!state.checked.size) return;
+    confirmModal({ title: `Delete ${state.checked.size} ${plural.toLowerCase()}?`, body: 'This cannot be undone from here (but Ctrl+Z will restore them).' }).then(ok => {
+      if (!ok) return;
+      store.snapshot();
+      for (const id of state.checked) store.remove(key, id, { commit: false });
+      store.commit(`Delete ${state.checked.size} ${plural}`);
+      state.checked.clear();
+      render();
+      toast('Deleted', { type: 'info' });
+    });
+  }
+
+  function bulkDuplicateSelected() {
+    if (!state.checked.size) return;
+    store.snapshot();
+    for (const id of [...state.checked]) store.duplicate(key, id, { commit: false });
+    store.commit(`Duplicate ${state.checked.size} ${plural}`);
+    state.checked.clear();
+    render();
+    toast('Duplicated', { type: 'success' });
+  }
+
+  async function bulkTagSelected() {
+    if (!state.checked.size) return;
+    const { promptModal } = await import('./ui.js');
+    const tag = await promptModal({ title: 'Add Tag', label: `Add a tag to ${state.checked.size} selected ${plural.toLowerCase()}` });
+    if (!tag || !tag.trim()) return;
+    store.snapshot();
+    for (const id of state.checked) {
+      const item = store.get(key, id);
+      if (item) { item.tags = item.tags || []; if (!item.tags.includes(tag.trim())) item.tags.push(tag.trim()); }
+    }
+    store.commit(`Tag ${state.checked.size} ${plural}`);
+    render();
+    toast('Tagged', { type: 'success' });
+  }
+
+  let bulkBarContainer;
+  function renderBulkBar() {
+    if (!state.bulkMode) return null;
+    const n = state.checked.size;
+    bulkBarContainer = h('div', { class: 'flex items-center justify-between gap-2 px-3 py-2 bg-accent-muted border-b border-surface-3/60 text-sm' }, [
+      h('span', { class: 'font-medium text-accent' }, n ? `${n} selected` : 'Select items below'),
+      h('div', { class: 'flex gap-1.5' }, [
+        h('button', { class: 'btn-ghost text-xs', disabled: !n, onclick: bulkTagSelected }, '🏷 Tag'),
+        h('button', { class: 'btn-ghost text-xs', disabled: !n, onclick: bulkDuplicateSelected }, '⧉ Duplicate'),
+        h('button', { class: 'btn-ghost text-xs text-rose-500', disabled: !n, onclick: bulkDeleteSelected }, '🗑 Delete'),
+      ]),
+    ]);
+    return bulkBarContainer;
+  }
+  function renderBulkBarOnly() {
+    const old = bulkBarContainer;
+    if (!old || !old.parentNode) return;
+    const fresh = renderBulkBar();
+    old.replaceWith(fresh);
   }
 
   function renderFilters() {
@@ -262,7 +334,7 @@ export function createCollectionView(config) {
     }
 
     const nameInput = h('input', { class: 'text-lg font-semibold bg-transparent focus:outline-none border-b border-transparent focus:border-accent flex-1', value: item.name || '' });
-    nameInput.addEventListener('input', () => { item.name = nameInput.value; });
+    nameInput.addEventListener('input', () => { item.name = nameInput.value; nameInput.classList.remove('border-rose-500'); });
 
     const descTa = h('textarea', { class: 'textarea', placeholder: 'Description…' });
     descTa.value = item.description || '';
@@ -300,6 +372,14 @@ export function createCollectionView(config) {
 
     const saveBtn = h('button', {
       class: 'btn-primary', onclick: () => {
+        if (!nameInput.value.trim()) {
+          nameInput.classList.add('border-rose-500');
+          nameInput.focus();
+          toast(`${singular} needs a name before it can be saved.`, { type: 'error' });
+          return;
+        }
+        const dupe = store.list(key).find(i => i.id !== item.id && (i.name || '').trim().toLowerCase() === nameInput.value.trim().toLowerCase());
+        if (dupe) toast(`Heads up — another ${singular.toLowerCase()} is also named "${dupe.name}".`, { type: 'warn' });
         store.upsert(key, item, { label: `Save ${item.name}` });
         render();
         toast('Saved', { type: 'success' });
@@ -345,6 +425,10 @@ export function createCollectionView(config) {
         h('span', { class: 'badge-gray' }, store.list(key).length),
       ]),
       h('div', { class: 'flex gap-2' }, [
+        h('button', {
+          class: `btn-secondary ${state.bulkMode ? 'bg-accent-muted text-accent' : ''}`,
+          onclick: () => { state.bulkMode = !state.bulkMode; if (!state.bulkMode) state.checked.clear(); render(); },
+        }, state.bulkMode ? '✕ Cancel Select' : '☑ Select'),
         generators.length > 0 && h('button', { class: 'btn-secondary', onclick: handleGenerateClick }, '✨ Generate'),
         h('button', { class: 'btn-secondary', onclick: exportCSV }, '⬇ CSV'),
         h('button', { class: 'btn-primary', onclick: handleNewClick }, `+ New ${singular}`),
@@ -353,10 +437,13 @@ export function createCollectionView(config) {
 
     filterContainer = renderFilters();
     listContainer = renderList();
-    const listPanel = h('div', { class: 'shrink-0 border-r border-surface-3/60 flex flex-col', style: `width:${state.listWidth}px` }, [filterContainer, listContainer]);
+    const bulkBar = renderBulkBar();
+    const listPanel = h('div', { class: 'shrink-0 border-r border-surface-3/60 flex flex-col', style: `width:${state.listWidth}px` }, [bulkBar, filterContainer, listContainer].filter(Boolean));
     const resizeHandle = h('div', { class: 'w-1 shrink-0 cursor-col-resize hover:bg-accent/50 transition-colors', title: 'Drag to resize' });
     attachResizer(resizeHandle, listPanel);
-    const detailPanel = renderDetail();
+    const detailPanel = state.bulkMode
+      ? h('div', { class: 'empty-state flex-1' }, [h('div', { class: 'text-4xl' }, '☑'), h('p', { class: 'font-medium text-slate-500' }, 'Check items in the list, then use the bar above to tag, duplicate or delete them together.')])
+      : renderDetail();
 
     const body = h('div', { class: 'flex flex-1 overflow-hidden' }, [listPanel, resizeHandle, detailPanel]);
     rootEl.append(toolbar, body);

@@ -18,18 +18,26 @@ export function toast(message, { type = 'info', timeout = 3200 } = {}) {
   }, timeout);
 }
 
+function focusableIn(el) {
+  return [...el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(n => !n.disabled && n.offsetParent !== null);
+}
+
 let modalRoot;
 let modalStack = [];
 export function openModal(contentEl, { title, width = '560px', onClose } = {}) {
   if (!modalRoot) modalRoot = document.getElementById('modal-root');
+  const titleId = `modal-title-${Math.random().toString(36).slice(2, 8)}`;
+  const previouslyFocused = document.activeElement;
   const backdrop = h('div', { class: 'modal-backdrop' });
   const panel = h('div', {
     class: 'modal-panel flex flex-col',
     style: `width:min(92vw, ${width}); max-height:86vh; top:7vh; left:50%; transform:translateX(-50%);`,
+    role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId,
   });
-  const closeBtn = h('button', { class: 'btn-icon', onclick: () => close() }, '✕');
+  const closeBtn = h('button', { class: 'btn-icon', 'aria-label': 'Close dialog', onclick: () => close() }, '✕');
   const header = h('div', { class: 'flex items-center justify-between px-5 py-3.5 border-b border-surface-3/60 shrink-0' }, [
-    h('h3', { class: 'font-semibold text-slate-800 dark:text-slate-100' }, title || ''),
+    h('h3', { class: 'font-semibold text-slate-800 dark:text-slate-100', id: titleId }, title || ''),
     closeBtn,
   ]);
   const body = h('div', { class: 'p-5 overflow-y-auto scroll-thin' }, [contentEl]);
@@ -40,14 +48,24 @@ export function openModal(contentEl, { title, width = '560px', onClose } = {}) {
     document.removeEventListener('keydown', onKeydown);
     modalStack.pop();
     onClose && onClose();
+    if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
   }
   function onKeydown(e) {
-    if (e.key === 'Escape') { e.stopPropagation(); close(); }
+    if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
+    if (e.key === 'Tab') {
+      const focusable = focusableIn(panel);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
   }
   backdrop.addEventListener('click', close);
   document.addEventListener('keydown', onKeydown);
   modalRoot.append(backdrop, panel);
   modalStack.push(close);
+  const toFocus = focusableIn(panel)[0];
+  if (toFocus) setTimeout(() => toFocus.focus(), 20);
   return { close, panel, body };
 }
 
