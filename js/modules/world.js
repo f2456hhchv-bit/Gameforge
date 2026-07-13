@@ -1,5 +1,5 @@
 import { createCollectionView } from '../components/collectionView.js';
-import { BIOME_TYPES, WEATHER_BY_BIOME, RESOURCE_BASE, HAZARD_BASE, FACTION_PREFIXES, FACTION_SUFFIXES } from '../generators/wordbank.js';
+import { BIOME_TYPES, WEATHER_BY_BIOME, RESOURCE_BASE, HAZARD_BASE, FACTION_PREFIXES, FACTION_SUFFIXES, CONTINENT_ADJECTIVES, CONTINENT_NOUNS } from '../generators/wordbank.js';
 import { rngFor, generateBiomeName, generateBiomeLore, generateFactionName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 import { autoTask } from '../taskHooks.js';
@@ -71,9 +71,21 @@ export function generateFaction(rng) {
   };
 }
 
+export function generateContinent(rng, subtype) {
+  const place = generatePlace(rng, subtype || 'region');
+  place.subtype = subtype || 'region';
+  place.name = `The ${pick(CONTINENT_ADJECTIVES, rng)} ${pick(CONTINENT_NOUNS, rng)}`;
+  place.description = `A vast, continent-scale ${place.subtype} spanning multiple climates and biomes.`;
+  place.resources = pickN(RESOURCE_BASE, 5, rng);
+  place.hazards = pickN(HAZARD_BASE, 3, rng);
+  place.proceduralRules = 'Composed of several distinct sub-biomes — consider generating individual Biome entries nested within this one and cross-linking them via lore.';
+  return place;
+}
+
 const GENERATORS = [
   { label: 'Generate Place (biome/region/city/planet/galaxy)', run: ({ subtype }) => generatePlace(rngFor(Math.random()), subtype || 'biome') },
   { label: 'Generate Faction', run: () => generateFaction(rngFor(Math.random())) },
+  { label: 'Generate Continent (large-scale, multi-biome)', run: ({ subtype }) => generateContinent(rngFor(Math.random()), subtype) },
 ];
 
 export function mountWorld(container, opts) {

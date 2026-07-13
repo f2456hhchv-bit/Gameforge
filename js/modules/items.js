@@ -2,7 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateWeaponName, weaponStats, rarityRoll } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 import { RARITIES, badgeForRarity } from '../schema.js';
-import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE } from '../generators/wordbank.js';
+import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE, LEGENDARY_TITLES } from '../generators/wordbank.js';
 import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
@@ -90,8 +90,41 @@ export function generateItem(rng, subtype) {
   };
 }
 
+const LEGENDARY_SET_SLOTS = ['weapon', 'armor', 'accessory'];
+let legendarySetState = { setName: '' };
+
+function generateLegendarySetItem({ index }) {
+  const rng = rngFor(Math.random());
+  if (index % LEGENDARY_SET_SLOTS.length === 0) {
+    legendarySetState.setName = `Set ${pick(LEGENDARY_TITLES, rng)}`;
+  }
+  const slot = LEGENDARY_SET_SLOTS[index % LEGENDARY_SET_SLOTS.length];
+  const item = generateItem(rng, slot);
+  item.subtype = slot;
+  item.rarity = 'Legendary';
+  item.name = `${legendarySetState.setName}: ${item.name}`;
+  item.description = `Part of "${legendarySetState.setName}" — a matched legendary set meant to be found and equipped together. ${item.description}`;
+  return item;
+}
+
+const STARTER_LOADOUT_SLOTS = ['weapon', 'armor', 'consumable', 'currency'];
+
+function generateStarterLoadoutItem({ index }) {
+  const rng = rngFor(Math.random());
+  const slot = STARTER_LOADOUT_SLOTS[index % STARTER_LOADOUT_SLOTS.length];
+  const item = generateItem(rng, slot);
+  item.subtype = slot;
+  item.rarity = 'Common';
+  item.value = Math.round(item.value * 0.2);
+  item.affixes = [];
+  item.description = `Starter loadout gear — a basic ${slot} issued at the start of a run. ${item.description}`;
+  return item;
+}
+
 const GENERATORS = [
   { label: 'Generate Item', run: ({ subtype }) => generateItem(rngFor(Math.random()), subtype || 'weapon') },
+  { label: 'Legendary Set (weapon+armor+accessory, matched)', run: generateLegendarySetItem },
+  { label: 'Starter Loadout (weapon/armor/consumable/currency)', run: generateStarterLoadoutItem },
 ];
 
 export function mountItems(container, opts) {

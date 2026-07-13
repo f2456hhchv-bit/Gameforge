@@ -116,7 +116,7 @@ export function createCollectionView(config) {
       const partial = generator.run({ index: i, subtype: subtypeKey, existing: store.list(key) }) || {};
       const item = {
         id: uid(key),
-        subtype: subtypeKey || partial.subtype,
+        subtype: partial.subtype || subtypeKey,
         tags: [],
         links: {},
         description: '',

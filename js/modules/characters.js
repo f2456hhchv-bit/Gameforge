@@ -1,7 +1,8 @@
 import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateCharacterName, generateCreatureName, statBlockForLevel, generateAbilityName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
-import { DAMAGE_TYPES } from '../generators/wordbank.js';
+import { DAMAGE_TYPES, NPC_OCCUPATIONS, LEGENDARY_TITLES } from '../generators/wordbank.js';
+import { generateFactionName } from '../generators/procedural.js';
 import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
@@ -72,8 +73,41 @@ export function generateCharacter(rng, subtype) {
   };
 }
 
+let factionRosterState = { name: '', size: 6 };
+
+function generateFactionRosterMember({ index }) {
+  const rng = rngFor(Math.random());
+  if (index % factionRosterState.size === 0) {
+    factionRosterState.name = generateFactionName(rng);
+  }
+  const isLeader = index % factionRosterState.size === 0;
+  const occupation = isLeader ? 'Leader' : pick(NPC_OCCUPATIONS, rng);
+  const char = generateCharacter(rng, 'npc');
+  char.subtype = 'npc';
+  char.description = `${occupation} of ${factionRosterState.name}.`;
+  char.biography = isLeader
+    ? `Founded and commands ${factionRosterState.name}.`
+    : `Serves ${factionRosterState.name} as ${occupation.toLowerCase()}.`;
+  return char;
+}
+
+function generateGauntletBoss({ index }) {
+  const rng = rngFor(Math.random());
+  const tier = index + 1;
+  const char = generateCharacter(rng, 'boss');
+  char.subtype = 'boss';
+  char.level = 10 + tier * 5;
+  char.name = `${char.name}, ${pick(LEGENDARY_TITLES, rng)}`;
+  char.description = `Gauntlet boss #${tier} — difficulty scales with encounter order in the sequence.`;
+  char.statistics = statBlockForLevel(rng, char.level, 4 + tier * 0.5);
+  char.scaling = `Tier ${tier} of the gauntlet; stats scale up sharply with each successive boss.`;
+  return char;
+}
+
 const GENERATORS = [
   { label: 'Generate Character', run: ({ subtype }) => generateCharacter(rngFor(Math.random()), subtype || 'npc') },
+  { label: 'Faction Roster (leader + members, same faction)', run: generateFactionRosterMember },
+  { label: 'Boss Gauntlet (escalating difficulty sequence)', run: generateGauntletBoss },
 ];
 
 export function mountCharacters(container, opts) {

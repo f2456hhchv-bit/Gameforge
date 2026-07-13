@@ -1,6 +1,6 @@
 import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateQuestName } from '../generators/procedural.js';
-import { QUEST_VERBS, QUEST_TARGETS } from '../generators/wordbank.js';
+import { QUEST_VERBS, QUEST_TARGETS, QUEST_CHAIN_THEMES } from '../generators/wordbank.js';
 import { pick, pickN } from '../util.js';
 import { store } from '../store.js';
 import { autoTask } from '../taskHooks.js';
@@ -63,8 +63,32 @@ function generateQuest(rng, subtype) {
   };
 }
 
+let chainState = { theme: null, chainStart: 0 };
+
+function generateQuestChainEntry({ index, subtype, existing }) {
+  const rng = rngFor(Math.random());
+  if (index === 0 || index - chainState.chainStart >= chainState.theme.beats.length) {
+    chainState.theme = pick(QUEST_CHAIN_THEMES, rng);
+    chainState.chainStart = index;
+  }
+  const stageNum = index - chainState.chainStart + 1;
+  const total = chainState.theme.beats.length;
+  const beat = chainState.theme.beats[stageNum - 1];
+  const quest = generateQuest(rng, subtype || 'main');
+  const label = `${chainState.theme.name} (${stageNum}/${total})`;
+  quest.name = `${label}: ${quest.name}`;
+  quest.description = beat;
+  quest.objectives = [beat];
+  quest.stages = [`Stage 1: ${beat}`, 'Stage 2: Return and report'];
+  const prevLabel = `${chainState.theme.name} (${stageNum - 1}/${total}):`;
+  const prev = stageNum > 1 ? existing.find(q => (q.name || '').startsWith(prevLabel)) : null;
+  quest.prerequisiteQuests = prev ? [prev.id] : [];
+  return quest;
+}
+
 const GENERATORS = [
   { label: 'Generate Quest', run: ({ subtype }) => generateQuest(rngFor(Math.random()), subtype || 'side') },
+  { label: 'Quest Chain (linked multi-stage story arc)', run: generateQuestChainEntry },
 ];
 
 export function mountQuests(container, opts) {
