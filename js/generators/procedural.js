@@ -75,7 +75,7 @@ export function weaponStats(rng, rarity) {
   ];
 }
 
-export function buildArtPromptText({ subjectName, subjectDesc, style, mood, lighting, camera, palette, materials, scale, animation, transparency, exportFormat }) {
+export function buildArtPromptText({ subjectName, subjectDesc, style, mood, lighting, camera, palette, materials, scale, animation, transparency, exportFormat, referenceNotes, negativePrompt, aspectRatio, resolution, postProcessing, variantCount }) {
   return [
     `Subject: ${subjectName}${subjectDesc ? ' — ' + subjectDesc : ''}`,
     `Art Style: ${style}`,
@@ -88,5 +88,11 @@ export function buildArtPromptText({ subjectName, subjectDesc, style, mood, ligh
     animation && `Animation Requirements: ${animation}`,
     `Transparency: ${transparency}`,
     `Export Format: ${exportFormat}`,
+    aspectRatio && `Aspect Ratio: ${aspectRatio}`,
+    resolution && `Target Resolution: ${resolution}`,
+    postProcessing && `Post-Processing: ${postProcessing}`,
+    variantCount && `Variants Needed: ${variantCount}`,
+    referenceNotes && `Reference/Inspiration: ${referenceNotes}`,
+    negativePrompt && `Negative Prompt (avoid): ${negativePrompt}`,
   ].filter(Boolean).join('\n');
 }

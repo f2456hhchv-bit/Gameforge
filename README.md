@@ -21,8 +21,8 @@ Then open `http://localhost:8080/index.html`. Note: opening `index.html` directl
 - **Item Studio** — weapons, armour, accessories, consumables, materials, quest items, currencies with rarity, stats, affixes and upgrade trees.
 - **Combat Designer** — abilities, status effects, damage types, AI behaviour trees, boss mechanics, attack patterns, wave/spawn systems, difficulty scaling.
 - **Level Designer** — levels with rooms, objectives, events, secrets, puzzles, checkpoints, reward placement and navigation.
-- **Art Director** — production-ready image-AI prompts (style/lighting/palette/camera/materials/scale/mood/animation/transparency/export format). Never generates images itself.
-- **UI Designer** — menus, HUD, inventory, settings, skill trees, popups with accessibility and controller support notes.
+- **Art Director** — production-ready image-AI prompts across 16 asset types (character/item/environment/VFX/UI/concept/key art, plus cinematics, box art, icons, achievement icons, weapon skins, mood boards, texture/lighting studies and character turnarounds) — style/lighting/palette/camera/materials/scale/mood/animation/transparency/export format/aspect ratio/resolution/post-processing/negative prompt, with one-click turnaround-set, time-of-day mood-board and full VFX-moveset generators. Never generates images itself.
+- **UI Designer** — 21 screen types (menus, HUD, inventory, settings, skill trees, popups, tutorials, notifications, dialogue, crafting, leaderboards, social, achievements, pause, game-over, character creation, quest log and more) with accessibility, controller, transition, sound-cue, localization and typography notes, plus a one-click full menu-flow generator.
 - **Audio Designer** — music, SFX, ambience, voice direction, triggers and mixing notes.
 - **Quest Designer** — main/side/faction/world-event/repeatable quests with stages, dialogue, branching, failure conditions, rewards and prerequisite chains.
 - **Task Manager** — kanban board + list view; every generated asset automatically creates a linked production task.

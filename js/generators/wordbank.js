@@ -219,6 +219,17 @@ export const UI_SCREEN_TYPES = [
   { key: 'shop', label: 'Shop / Vendor' },
   { key: 'character-sheet', label: 'Character Sheet' },
   { key: 'loading', label: 'Loading Screen' },
+  { key: 'tutorial', label: 'Tutorial / Onboarding Overlay' },
+  { key: 'notification', label: 'Notification / Toast' },
+  { key: 'dialogue', label: 'Dialogue Box' },
+  { key: 'crafting', label: 'Crafting UI' },
+  { key: 'leaderboard', label: 'Leaderboard' },
+  { key: 'social', label: 'Social / Friends List' },
+  { key: 'achievements-ui', label: 'Achievements Screen' },
+  { key: 'pause', label: 'Pause Menu' },
+  { key: 'game-over', label: 'Game Over / Victory Screen' },
+  { key: 'character-creation', label: 'Character Creation' },
+  { key: 'quest-log', label: 'Quest Log / Codex' },
 ];
 
 export const AUDIO_TYPES = [
