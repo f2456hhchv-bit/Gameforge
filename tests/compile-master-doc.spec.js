@@ -28,6 +28,36 @@ test.describe('Master document compilation', () => {
     expect(errors).toEqual([]);
   });
 
+  test('Marketing One-Pager, Accessibility Statement and Post-Mortem generate real project data', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'New Doc Types Test', 'Fantasy Action RPG');
+
+    await openModule(page, 'Documentation');
+    await page.locator('.rounded-lg', { hasText: 'Marketing One-Pager' }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole('button', { name: /Generate Now/ }).click();
+    await page.waitForTimeout(200);
+    let content = await page.evaluate(() => window.__gfStore.project.collections.docs.find(d => d.subtype === 'marketing-one-pager').content);
+    expect(content).toContain('Marketing One-Pager');
+    expect(content).toContain('Elevator Pitch');
+
+    await page.locator('.rounded-lg', { hasText: 'Accessibility Statement' }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole('button', { name: /Generate Now/ }).click();
+    await page.waitForTimeout(200);
+    content = await page.evaluate(() => window.__gfStore.project.collections.docs.find(d => d.subtype === 'accessibility-statement').content);
+    expect(content).toContain('Coverage Checklist');
+
+    await page.locator('.rounded-lg', { hasText: 'Post-Mortem' }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole('button', { name: /Generate Now/ }).click();
+    await page.waitForTimeout(200);
+    content = await page.evaluate(() => window.__gfStore.project.collections.docs.find(d => d.subtype === 'post-mortem').content);
+    expect(content).toContain('Milestones Hit');
+    expect(content).toContain('What Went Well');
+    expect(errors).toEqual([]);
+  });
+
   test('Industry Research Brief doc generates real GOTY history and gap analysis', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Research Brief Test');

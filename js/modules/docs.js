@@ -188,6 +188,63 @@ ${section('Recent Changes', recentActivity.map(a => `- ${a.message} _(${timeAgo(
 `;
 }
 
+function genMarketingOnePager(project) {
+  const pillars = allDesignDocs('pillar');
+  const usp = findDesignDoc('usp');
+  const audience = findDesignDoc('audience');
+  const stats = {
+    characters: list('characters').length, items: list('items').length,
+    quests: list('quests').length, levels: list('levels').length, biomes: list('biomes').length,
+  };
+  return `# ${project.name} — Marketing One-Pager
+
+**Genre:** ${project.meta.genre || '—'} · **Platforms:** ${(project.meta.platform || []).join(', ') || '—'} · **Engine:** ${project.meta.engine || '—'} · **Target Release:** ${fmtDate(project.meta.targetRelease)}
+
+${section('Elevator Pitch', usp?.statement)}
+${section('Key Features', pillars.map(p => `- **${p.name}** — ${p.statement || ''}`).join('\n'))}
+${section('Target Audience', audience ? `${audience.ageRange || ''} ${audience.demographics || ''}\n\n${audience.psychographics || ''}` : null)}
+${section('Content Scale (for press kit context)', `${stats.characters} characters · ${stats.items} items · ${stats.quests} quests · ${stats.levels} levels · ${stats.biomes} world regions`)}
+${section('Proof Points', usp?.proofPoints?.map(p => `- ${p}`).join('\n'))}
+`;
+}
+
+function genAccessibilityStatement(project) {
+  const difficulty = findDesignDoc('difficulty');
+  const uiScreens = list('uiScreens');
+  const uiAccessibility = [...new Set(uiScreens.flatMap(s => s.accessibility || []))];
+  const controllerNotes = uiScreens.filter(s => s.controllerSupport).map(s => `**${s.name}**: ${s.controllerSupport}`);
+  const checklist = [
+    'Colourblind modes', 'Remappable controls', 'Subtitles / closed captions', 'UI scale slider',
+    'High-contrast mode', 'Screen reader labels', 'Reduced motion toggle', 'Difficulty options for combat/reflex challenges',
+  ];
+  return `# ${project.name} — Accessibility Statement
+
+${section('Accessibility Features Implemented', uiAccessibility.length ? bulletList(uiAccessibility) : '_None recorded yet — add accessibility features to UI Screens in UI Designer._')}
+${section('Difficulty & Assist Options', difficulty ? `Modes: ${(difficulty.modes || []).join(', ')}\n\n${(difficulty.accessibilityOptions || []).join(', ')}` : null)}
+${section('Controller & Input Support', controllerNotes.join('\n\n'))}
+${section('Coverage Checklist', bulletList(checklist.map(c => `${uiAccessibility.includes(c) ? '[x]' : '[ ]'} ${c}`)))}
+`;
+}
+
+function genPostMortem(project) {
+  const milestones = list('milestones');
+  const tasks = list('tasks');
+  const doneMilestones = milestones.filter(m => m.done);
+  const byCategory = {};
+  for (const t of tasks) { byCategory[t.category || 'general'] = byCategory[t.category || 'general'] || { done: 0, total: 0 }; byCategory[t.category || 'general'].total++; if (t.status === 'done') byCategory[t.category || 'general'].done++; }
+  return `# ${project.name} — Post-Mortem / Retrospective
+
+*Fill this in at each milestone or at ship — the stats below are computed live to give the retro real numbers to react to.*
+
+${section('Milestones Hit', `${doneMilestones.length}/${milestones.length} milestones marked done.`)}
+${section('Task Completion by Category', Object.entries(byCategory).map(([cat, s]) => `- **${cat}**: ${s.done}/${s.total} done`).join('\n'))}
+${section('What Went Well', '_Fill in during the retro._')}
+${section('What Went Wrong', '_Fill in during the retro._')}
+${section('Lessons Learned', '_Fill in during the retro._')}
+${section('Action Items for Next Milestone', '_Fill in during the retro._')}
+`;
+}
+
 function genResearchBrief(project) {
   const relevantGaps = GENRE_GAPS.filter(g => (project.meta.genre || '') && g.combo.some(c => (project.meta.genre || '').toLowerCase().includes(c.toLowerCase().split(' ')[0])));
   const highlighted = relevantGaps.length ? relevantGaps : GENRE_GAPS.slice(0, 5);
@@ -223,6 +280,9 @@ const DOC_TYPES = [
   { key: 'qa-doc', label: 'QA Document', icon: '🧪', gen: genQADoc },
   { key: 'release-notes', label: 'Release Notes', icon: '🚀', gen: genReleaseNotes },
   { key: 'patch-notes', label: 'Patch Notes', icon: '🩹', gen: genPatchNotes },
+  { key: 'marketing-one-pager', label: 'Marketing One-Pager', icon: '📣', gen: genMarketingOnePager },
+  { key: 'accessibility-statement', label: 'Accessibility Statement', icon: '♿', gen: genAccessibilityStatement },
+  { key: 'post-mortem', label: 'Post-Mortem / Retrospective', icon: '🔁', gen: genPostMortem },
   { key: 'research-brief', label: 'Industry Research Brief', icon: '🔬', gen: genResearchBrief },
 ];
 
