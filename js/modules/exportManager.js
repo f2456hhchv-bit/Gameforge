@@ -155,20 +155,39 @@ function colLetter(n) {
   return s;
 }
 
-export async function exportXLSX(filename, sheetName, rows) {
+function xlsxEsc(s) {
+  return escapeHtml(String(s ?? '')).replace(/&quot;/g, '&#34;').replace(/&#39;/g, '&#39;');
+}
+
+function xlsxIsNumeric(v) {
+  return v !== '' && v != null && Number.isFinite(Number(v)) && !/^0\d/.test(String(v).trim());
+}
+
+function xlsxSheetDataXML(rows) {
+  const cols = Object.keys(rows[0] || {});
+  const cellXML = (v, ref) => xlsxIsNumeric(v)
+    ? `<c r="${ref}"><v>${Number(v)}</v></c>`
+    : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xlsxEsc(v)}</t></is></c>`;
+  const rowXML = (values, rowIndex) => `<row r="${rowIndex}">${values.map((v, i) => cellXML(v, `${colLetter(i)}${rowIndex}`)).join('')}</row>`;
+  return [rowXML(cols, 1), ...rows.map((r, i) => rowXML(cols.map(c => r[c]), i + 2))].join('');
+}
+
+const XLSX_STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+<fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+<borders count="1"><border/></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+</styleSheet>`;
+
+// sheets: [{ name, rows }]. Empty-row sheets are still written (header-only) so a
+// multi-sheet export never silently drops a collection just because it's empty.
+export async function exportXLSXMultiSheet(filename, sheets) {
   const JSZip = window.JSZip;
   if (!JSZip) { alert('Excel export library failed to load.'); return; }
-  if (!rows.length) { alert('Nothing to export.'); return; }
-  const cols = Object.keys(rows[0]);
-  const esc = s => escapeHtml(String(s ?? '')).replace(/&quot;/g, '&#34;').replace(/&#39;/g, '&#39;');
-
-  const isNumeric = v => v !== '' && v != null && Number.isFinite(Number(v)) && !/^0\d/.test(String(v).trim());
-  const cellXML = (v, ref) => isNumeric(v)
-    ? `<c r="${ref}"><v>${Number(v)}</v></c>`
-    : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
-  const rowXML = (values, rowIndex) => `<row r="${rowIndex}">${values.map((v, i) => cellXML(v, `${colLetter(i)}${rowIndex}`)).join('')}</row>`;
-
-  const sheetRows = [rowXML(cols, 1), ...rows.map((r, i) => rowXML(cols.map(c => r[c]), i + 2))].join('');
+  const usable = sheets.filter(s => s.rows.length);
+  if (!usable.length) { alert('Nothing to export.'); return; }
 
   const zip = new JSZip();
   zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -176,7 +195,7 @@ export async function exportXLSX(filename, sheetName, rows) {
 <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
 <Default Extension="xml" ContentType="application/xml"/>
 <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+${usable.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('\n')}
 <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
 </Types>`);
   zip.folder('_rels').file('.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -184,26 +203,28 @@ export async function exportXLSX(filename, sheetName, rows) {
 <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`);
   const xl = zip.folder('xl');
+  const stylesRid = `rId${usable.length + 1}`;
   xl.folder('_rels').file('workbook.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+${usable.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('\n')}
+<Relationship Id="${stylesRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`);
   xl.file('workbook.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheets><sheet name="${escapeHtml(sheetName).slice(0, 31)}" sheetId="1" r:id="rId1"/></sheets>
+<sheets>${usable.map((s, i) => `<sheet name="${escapeHtml(s.name).slice(0, 31)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>
 </workbook>`);
-  xl.file('styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
-<fills count="1"><fill><patternFill patternType="none"/></fill></fills>
-<borders count="1"><border/></borders>
-<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
-</styleSheet>`);
-  xl.folder('worksheets').file('sheet1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`);
+  xl.file('styles.xml', XLSX_STYLES_XML);
+  const worksheets = xl.folder('worksheets');
+  usable.forEach((s, i) => {
+    worksheets.file(`sheet${i + 1}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${xlsxSheetDataXML(s.rows)}</sheetData></worksheet>`);
+  });
 
   const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   download(filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`, blob, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}
+
+export async function exportXLSX(filename, sheetName, rows) {
+  if (!rows.length) { alert('Nothing to export.'); return; }
+  return exportXLSXMultiSheet(filename, [{ name: sheetName, rows }]);
 }

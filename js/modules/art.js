@@ -2,7 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { ART_STYLES } from '../schema.js';
 import { MOODS, LIGHTING, CAMERA_ANGLES, PALETTES, MATERIALS } from '../generators/wordbank.js';
 import { rngFor, buildArtPromptText } from '../generators/procedural.js';
-import { pick } from '../util.js';
+import { pick, download } from '../util.js';
 import { store } from '../store.js';
 import { toast } from '../components/ui.js';
 
@@ -70,6 +70,17 @@ const GENERATORS = [
   { label: 'Generate Prompt', run: ({ subtype }) => generatePrompt(rngFor(Math.random()), subtype || 'concept') },
 ];
 
+function exportAllPrompts() {
+  const prompts = store.list('artPrompts');
+  if (!prompts.length) { toast('No art prompts yet — generate some first.', { type: 'error' }); return; }
+  const body = prompts.map((p, i) => {
+    const s = SUBTYPES.find(s => s.key === p.subtype);
+    return `# ${i + 1}. ${p.name} (${s ? s.label : p.subtype})\n\n${p.promptText || buildPromptFor(p)}\n`;
+  }).join('\n---\n\n');
+  download(`${store.project.name.replace(/[^a-z0-9]+/gi, '-')}-art-prompts.txt`, body, 'text/plain');
+  toast(`Exported ${prompts.length} art prompts`, { type: 'success' });
+}
+
 export function mountArt(container, opts) {
   const view = createCollectionView({
     key: 'artPrompts', singular: 'Art Prompt', plural: 'Art Prompts', icon: '🎨',
@@ -79,6 +90,7 @@ export function mountArt(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    toolbarActions: [{ icon: '📋', label: 'Export All Prompts (.txt)', onClick: exportAllPrompts }],
     extraActions: (item) => [{
       icon: '🪄', label: 'Rebuild prompt text from fields',
       onClick: (it) => {

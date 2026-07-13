@@ -75,6 +75,11 @@ class Store {
     this.emit('saved');
   }
 
+  // Bypasses the debounce for an explicit "save now" action (e.g. Ctrl+S).
+  async saveNow() {
+    await this._persist();
+  }
+
   touch() {
     this.dirty = true;
     this.project.updatedAt = nowISO();

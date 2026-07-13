@@ -18,6 +18,7 @@ export function createCollectionView(config) {
     cardMeta = () => '',
     onCreate = () => {},
     extraActions = () => [],
+    toolbarActions = [],
     helpText = '',
   } = config;
 
@@ -430,6 +431,7 @@ export function createCollectionView(config) {
           onclick: () => { state.bulkMode = !state.bulkMode; if (!state.bulkMode) state.checked.clear(); render(); },
         }, state.bulkMode ? '✕ Cancel Select' : '☑ Select'),
         generators.length > 0 && h('button', { class: 'btn-secondary', onclick: handleGenerateClick }, '✨ Generate'),
+        ...toolbarActions.map(a => h('button', { class: 'btn-secondary', title: a.label, onclick: () => a.onClick() }, `${a.icon ? a.icon + ' ' : ''}${a.label}`)),
         h('button', { class: 'btn-secondary', onclick: exportCSV }, '⬇ CSV'),
         h('button', { class: 'btn-primary', onclick: handleNewClick }, `+ New ${singular}`),
       ].filter(Boolean)),

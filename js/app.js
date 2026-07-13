@@ -6,6 +6,8 @@ import { setNavigationHandler } from './router.js';
 import { openModal, closeTopModal, toast, promptModal, confirmModal } from './components/ui.js';
 import { COLLECTIONS } from './schema.js';
 import { TEMPLATES } from './templates.js';
+import { exportXLSXMultiSheet } from './modules/exportManager.js';
+import { runProjectAudit } from './audit.js';
 
 const root = document.getElementById('app');
 
@@ -197,6 +199,7 @@ function renderTopbar() {
 
   const isDark = document.documentElement.classList.contains('dark');
   const themeBtn = h('button', { class: 'btn-icon', title: 'Toggle dark mode', 'aria-label': isDark ? 'Switch to light mode' : 'Switch to dark mode', onclick: toggleTheme }, isDark ? '☀️' : '🌙');
+  const accentBtn = h('button', { class: 'btn-icon', title: 'Accent colour', 'aria-label': 'Choose accent colour', onclick: openAccentPicker }, '🎨');
   const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', 'aria-label': 'Search', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
   const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', 'aria-label': 'Project backup menu', onclick: openBackupMenu }, '⋮');
   const helpBtn = h('button', { class: 'btn-icon', title: 'Keyboard shortcuts (?)', 'aria-label': 'Keyboard shortcuts', onclick: openShortcutsModal }, '⌨');
@@ -205,8 +208,70 @@ function renderTopbar() {
   bar.append(
     h('div', { class: 'flex items-center gap-1' }, [projSwitch]),
     h('div', { class: 'flex-1 flex justify-center' }, [searchBtn]),
-    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, helpBtn, backupBtn, assistantBtn]),
+    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, accentBtn, helpBtn, backupBtn, assistantBtn]),
   );
+}
+
+// ---------- Accent colour customization ----------
+// --accent/--accent-muted are RGB-triple CSS custom properties (see
+// css/input.css); applying them as an inline style on <html> beats the
+// class-based .dark/:root declarations in specificity, so this works without
+// touching the compiled stylesheet or needing a rebuild.
+const ACCENT_PRESETS = [
+  { key: 'indigo', label: 'Indigo', light: '79 70 229', lightMuted: '224 222 253', dark: '129 140 248', darkMuted: '49 46 84' },
+  { key: 'blue', label: 'Blue', light: '37 99 235', lightMuted: '219 234 254', dark: '96 165 250', darkMuted: '30 58 95' },
+  { key: 'emerald', label: 'Emerald', light: '5 150 105', lightMuted: '209 250 229', dark: '52 211 153', darkMuted: '6 78 59' },
+  { key: 'rose', label: 'Rose', light: '225 29 72', lightMuted: '255 228 230', dark: '251 113 133', darkMuted: '76 5 25' },
+  { key: 'amber', label: 'Amber', light: '217 119 6', lightMuted: '254 243 199', dark: '251 191 36', darkMuted: '69 51 4' },
+  { key: 'violet', label: 'Violet', light: '124 58 237', lightMuted: '237 233 254', dark: '167 139 250', darkMuted: '53 40 100' },
+  { key: 'teal', label: 'Teal', light: '13 148 136', lightMuted: '204 251 241', dark: '45 212 191', darkMuted: '19 66 63' },
+];
+let currentAccentKey = 'indigo';
+
+function applyAccent(key) {
+  const preset = ACCENT_PRESETS.find(p => p.key === key) || ACCENT_PRESETS[0];
+  const isDark = document.documentElement.classList.contains('dark');
+  document.documentElement.style.setProperty('--accent', isDark ? preset.dark : preset.light);
+  document.documentElement.style.setProperty('--accent-muted', isDark ? preset.darkMuted : preset.lightMuted);
+  currentAccentKey = preset.key;
+}
+
+function openAccentPicker() {
+  const content = h('div', { class: 'grid grid-cols-2 gap-2' }, ACCENT_PRESETS.map(p => h('button', {
+    class: `btn-secondary justify-start gap-2 ${currentAccentKey === p.key ? 'ring-2 ring-accent' : ''}`,
+    onclick: async () => {
+      applyAccent(p.key);
+      await DB.setSetting('accentColor', p.key);
+      closeTopModal();
+      renderTopbar();
+    },
+  }, [
+    h('span', { class: 'inline-block w-4 h-4 rounded-full', style: `background: rgb(${document.documentElement.classList.contains('dark') ? p.dark : p.light})` }),
+    h('span', {}, p.label),
+  ])));
+  openModal(content, { title: 'Accent Colour', width: '360px' });
+}
+
+const EXCEL_EXPORT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries', 'tasks'];
+
+function flattenForSheet(item) {
+  const row = { id: item.id, name: item.name || item.title || '', subtype: item.subtype || '' };
+  for (const [k, v] of Object.entries(item)) {
+    if (['id', 'name', 'title', 'subtype', 'links'].includes(k)) continue;
+    if (Array.isArray(v)) row[k] = v.map(x => (typeof x === 'object' && x ? (x.key || x.name || JSON.stringify(x)) : x)).join('|');
+    else if (v && typeof v === 'object') row[k] = JSON.stringify(v);
+    else row[k] = v ?? '';
+  }
+  return row;
+}
+
+function exportFullProjectExcel() {
+  const sheets = EXCEL_EXPORT_COLLECTIONS
+    .map(key => ({ name: COLLECTIONS[key].label, rows: store.list(key).map(flattenForSheet) }))
+    .filter(s => s.rows.length);
+  if (!sheets.length) { toast('Nothing to export yet — generate some content first.', { type: 'error' }); return; }
+  exportXLSXMultiSheet(`${store.project.name.replace(/[^a-z0-9]+/gi, '-')}-full-project`, sheets);
+  toast(`Exported ${sheets.length} sheets to Excel`, { type: 'success' });
 }
 
 function openBackupMenu() {
@@ -236,6 +301,9 @@ function openBackupMenu() {
         closeTopModal();
       },
     }, '⬇ Export Project (JSON backup)'),
+    h('button', {
+      class: 'btn-secondary justify-start', onclick: () => { exportFullProjectExcel(); closeTopModal(); },
+    }, '⬇ Export Full Project (Excel, one sheet per area)'),
     h('button', { class: 'btn-secondary justify-start', onclick: () => fileInput.click() }, '⬆ Import Project (JSON backup)'),
     fileInput,
     h('p', { class: 'text-xs text-slate-400' }, 'Backups contain everything — every character, item, biome, task and document. Great for switching devices or keeping a snapshot before a big change.'),
@@ -311,8 +379,10 @@ async function toggleAssistant() {
 }
 
 function toggleTheme() {
-  const isDark = document.documentElement.classList.toggle('dark');
+  document.documentElement.classList.toggle('dark');
+  const isDark = document.documentElement.classList.contains('dark');
   DB.setSetting('theme', isDark ? 'dark' : 'light');
+  applyAccent(currentAccentKey);
   renderTopbar();
 }
 
@@ -332,15 +402,36 @@ function searchEntities(term) {
   return results;
 }
 
+const QUICK_ACTIONS = [
+  { label: 'New Project', icon: '➕', run: async () => { const name = await promptModal({ title: 'New Project', label: 'Project name' }); if (!name) return; await createProjectWithTemplate(name); resetShellForProject(); } },
+  { label: 'Switch Project', icon: '🎮', run: () => openProjectSwitcher() },
+  { label: 'Toggle Dark / Light Mode', icon: '🌓', run: () => toggleTheme() },
+  { label: 'Choose Accent Colour', icon: '🎨', run: () => openAccentPicker() },
+  { label: 'Toggle AI Assistant', icon: '🤖', run: () => toggleAssistant() },
+  { label: 'Project Backup / Restore', icon: '⋮', run: () => openBackupMenu() },
+  { label: 'Export Full Project to Excel', icon: '📊', run: () => exportFullProjectExcel() },
+  { label: 'Keyboard Shortcuts', icon: '⌨', run: () => openShortcutsModal() },
+  { label: 'Run Project Audit', icon: '🩺', run: () => { const { summary } = runProjectAudit(); toast(summary, { type: 'info' }); openTab('dashboard'); } },
+];
+
 function openCommandPalette() {
-  const input = h('input', { class: 'input text-base', placeholder: 'Search modules or any character, item, quest, level…' });
+  const input = h('input', { class: 'input text-base', placeholder: 'Search modules, entities, or quick actions…' });
   const results = h('div', { class: 'flex flex-col gap-0.5 mt-3 max-h-[420px] overflow-y-auto' });
   function draw(term = '') {
     results.innerHTML = '';
-    const modules = MODULES.filter(m => m.label.toLowerCase().includes(term.toLowerCase()));
+    const lower = term.toLowerCase();
+    const modules = MODULES.filter(m => m.label.toLowerCase().includes(lower));
     modules.forEach(m => results.appendChild(h('div', {
       class: 'ctx-menu-item', onclick: () => { closeTopModal(); openTab(m.key); },
     }, [h('span', {}, m.icon), h('span', {}, m.label)])));
+
+    const actions = QUICK_ACTIONS.filter(a => a.label.toLowerCase().includes(lower));
+    if (actions.length) {
+      results.appendChild(h('div', { class: 'nav-group-label' }, 'Quick Actions'));
+      actions.forEach(a => results.appendChild(h('div', {
+        class: 'ctx-menu-item', onclick: () => { closeTopModal(); a.run(); },
+      }, [h('span', {}, a.icon), h('span', {}, a.label)])));
+    }
 
     const entities = searchEntities(term).slice(0, 20);
     if (entities.length) {
@@ -354,7 +445,7 @@ function openCommandPalette() {
         h('span', { class: 'text-xs text-slate-400 shrink-0' }, COLLECTIONS[collection]?.label),
       ])));
     }
-    if (!modules.length && !entities.length && term.trim()) {
+    if (!modules.length && !actions.length && !entities.length && term.trim()) {
       results.appendChild(h('p', { class: 'text-sm text-slate-400 px-2 py-3' }, `No matches for "${term}".`));
     }
   }
@@ -369,9 +460,12 @@ function isTypingTarget(el) {
 }
 
 const SHORTCUTS = [
-  { keys: 'Ctrl K', desc: 'Open search (modules & every entity)' },
+  { keys: 'Ctrl K', desc: 'Open search (modules, entities & quick actions)' },
+  { keys: '/', desc: 'Open search (when not typing in a field)' },
   { keys: 'Ctrl Z', desc: 'Undo' },
   { keys: 'Ctrl Shift Z', desc: 'Redo (Ctrl Y also works)' },
+  { keys: 'Ctrl J', desc: 'Toggle the AI Assistant panel' },
+  { keys: 'Ctrl S', desc: 'Save now (autosave already runs continuously)' },
   { keys: '?', desc: 'Show this shortcuts cheatsheet' },
   { keys: 'Esc', desc: 'Close the topmost modal' },
 ];
@@ -390,6 +484,12 @@ function wireKeyboardShortcuts() {
     if (meta && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
     else if (meta && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); store.redo(); }
     else if (meta && e.key.toLowerCase() === 'k') { e.preventDefault(); openCommandPalette(); }
+    else if (meta && e.key.toLowerCase() === 'j') { e.preventDefault(); toggleAssistant(); }
+    else if (meta && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      if (store.project) store.saveNow().then(() => toast('Saved', { type: 'success' }));
+    }
+    else if (e.key === '/' && !isTypingTarget(e.target)) { e.preventDefault(); openCommandPalette(); }
     else if (e.key === '?' && !isTypingTarget(e.target)) { e.preventDefault(); openShortcutsModal(); }
   });
 }
@@ -397,6 +497,8 @@ function wireKeyboardShortcuts() {
 async function initTheme() {
   const saved = await DB.getSetting('theme', 'dark');
   if (saved === 'dark') document.documentElement.classList.add('dark');
+  const accent = await DB.getSetting('accentColor', 'indigo');
+  applyAccent(accent);
 }
 
 function renderShell() {

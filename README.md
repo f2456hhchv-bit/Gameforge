@@ -51,7 +51,13 @@ npm run build:standalone   # writes ./gameforge-standalone.html
 
 ## Exports
 
-Markdown, JSON, CSV and HTML are native. PDF uses the browser's print pipeline. DOCX and XLSX are real OOXML packages built with a vendored JSZip (`vendor/jszip.min.js`) — no server round-trip required.
+Markdown, JSON, CSV and HTML are native. PDF uses the browser's print pipeline. DOCX and XLSX are real OOXML packages built with a vendored JSZip (`vendor/jszip.min.js`) — no server round-trip required. The project backup menu (⋮ in the top bar) can also export the **entire project as one multi-sheet Excel workbook** (one sheet per content area), and Art Director has a one-click **batch export of every art prompt** to a single text file.
+
+## Customization
+
+- **Accent colour** — the 🎨 button in the top bar swaps the whole UI's accent colour (7 presets), independent of light/dark mode, and persists across sessions.
+- **Command palette** (`Ctrl K` or `/`) searches modules, every entity, *and* quick actions (new project, toggle theme, export to Excel, run a project audit, and more) from one box.
+- Extra shortcuts: `Ctrl J` toggles the AI Assistant, `Ctrl S` forces an immediate save. Press `?` any time for the full cheatsheet.
 
 ## Architecture
 
