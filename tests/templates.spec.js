@@ -40,6 +40,21 @@ test.describe('Starter templates', () => {
     expect(errors).toEqual([]);
   });
 
+  test('all 9 new genre templates seed without errors', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    const labels = [
+      'Horror Survival', 'Puzzle-Platformer', 'Tower Defense', 'Roguelike', 'Visual Novel',
+      'Strategy / 4X', 'Card Game / Deckbuilder', 'Farming Sim', 'Battle Royale',
+    ];
+    for (const label of labels) {
+      await createProject(page, `${label} Test`, label);
+      const state = await projectState(page);
+      expect(state.counts.designDocs, `${label}: designDocs`).toBeGreaterThan(0);
+      expect(state.counts.quests, `${label}: quests`).toBeGreaterThan(0);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('Blank Project starts empty and records no undo step', async ({ page }) => {
     await createProject(page, 'Blank Template Test', 'Blank Project');
     const state = await projectState(page);
