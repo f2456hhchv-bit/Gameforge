@@ -6,7 +6,7 @@ import { pick } from '../util.js';
 import { store } from '../store.js';
 import { toast } from '../components/ui.js';
 
-const SUBTYPES = [
+export const SUBTYPES = [
   { key: 'character', label: 'Character Art', icon: '🧑‍🎨' },
   { key: 'item', label: 'Item Art', icon: '🗡️' },
   { key: 'environment', label: 'Environment Art', icon: '🏞️' },
@@ -52,7 +52,7 @@ function buildPromptFor(item) {
   });
 }
 
-function generatePrompt(rng, subtype) {
+export function generatePrompt(rng, subtype) {
   const base = {
     style: pick(ART_STYLES, rng), mood: pick(MOODS, rng), lighting: pick(LIGHTING, rng),
     camera: pick(CAMERA_ANGLES, rng), palette: pick(PALETTES, rng), materials: pick(MATERIALS, rng),

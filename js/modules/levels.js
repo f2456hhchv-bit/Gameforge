@@ -24,7 +24,7 @@ function cardMeta(item) {
   return [item.layoutType, item.estimatedPlaytime].filter(Boolean).join(' · ');
 }
 
-function generateLevel(rng) {
+export function generateLevel(rng) {
   const roomCount = 4 + Math.floor(rng() * 5);
   return {
     name: `${generateBiomeName(rng)} — Level`,

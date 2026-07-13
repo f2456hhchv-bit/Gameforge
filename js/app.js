@@ -148,11 +148,12 @@ function renderTopbar() {
   const themeBtn = h('button', { class: 'btn-icon', title: 'Toggle dark mode', onclick: toggleTheme }, document.documentElement.classList.contains('dark') ? '☀️' : '🌙');
   const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
   const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', onclick: openBackupMenu }, '⋮');
+  const assistantBtn = h('button', { class: 'btn-secondary text-sm', title: 'AI Assistant', onclick: toggleAssistant }, ['🤖 Assistant']);
 
   bar.append(
     h('div', { class: 'flex items-center gap-1' }, [projSwitch]),
     h('div', { class: 'flex-1 flex justify-center' }, [searchBtn]),
-    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, backupBtn]),
+    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, backupBtn, assistantBtn]),
   );
 }
 
@@ -242,6 +243,22 @@ function resetShellForProject() {
   openTab('dashboard');
 }
 
+// ---------- Assistant panel (persistent side drawer, not part of the tab system) ----------
+const assistantState = { open: false, mounted: false };
+
+async function toggleAssistant() {
+  assistantState.open = !assistantState.open;
+  const panel = document.getElementById('assistant-panel');
+  panel.classList.toggle('w-96', assistantState.open);
+  panel.classList.toggle('w-0', !assistantState.open);
+  panel.classList.toggle('border-l', assistantState.open);
+  if (assistantState.open && !assistantState.mounted) {
+    assistantState.mounted = true;
+    const { mountAssistant } = await import('./modules/assistant.js');
+    mountAssistant(document.getElementById('assistant-panel-body'));
+  }
+}
+
 function toggleTheme() {
   const isDark = document.documentElement.classList.toggle('dark');
   DB.setSetting('theme', isDark ? 'dark' : 'light');
@@ -291,6 +308,9 @@ function renderShell() {
       h('header', { id: 'topbar', class: 'h-14 shrink-0 border-b border-surface-3/60 flex items-center justify-between px-3 bg-surface-0' }),
       h('div', { id: 'tabbar', class: 'h-9 shrink-0 border-b border-surface-3/60 flex overflow-x-auto bg-surface-1' }),
       h('main', { id: 'workspace', class: 'flex-1 relative overflow-hidden bg-surface-1' }),
+    ]),
+    h('aside', { id: 'assistant-panel', class: 'w-0 shrink-0 overflow-hidden flex flex-col bg-surface-0 border-surface-3/60 transition-all duration-150' }, [
+      h('div', { id: 'assistant-panel-body', class: 'flex flex-col h-full w-96' }),
     ]),
   ]));
   renderSidebar();

@@ -3,7 +3,7 @@ import { BIOME_TYPES, WEATHER_BY_BIOME, RESOURCE_BASE, HAZARD_BASE, FACTION_PREF
 import { rngFor, generateBiomeName, generateBiomeLore, generateFactionName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 
-const SUBTYPES = [
+export const SUBTYPES = [
   { key: 'biome', label: 'Biome', icon: '🌳' },
   { key: 'region', label: 'Region', icon: '🗺️' },
   { key: 'city', label: 'City', icon: '🏙️' },
@@ -43,7 +43,7 @@ function badgeFor(item) {
   return badges;
 }
 
-function generatePlace(rng, subtype) {
+export function generatePlace(rng, subtype) {
   const type = pick(BIOME_TYPES, rng);
   return {
     name: generateBiomeName(rng),
@@ -59,21 +59,20 @@ function generatePlace(rng, subtype) {
   };
 }
 
+export function generateFaction(rng) {
+  return {
+    subtype: 'faction', name: generateFactionName(rng),
+    description: 'An organized group with its own agenda.',
+    ideology: 'Believes strength and order must be restored to a broken world.',
+    leader: '', territory: '',
+    goals: ['Expand influence', 'Secure resources', 'Eliminate rivals'],
+    allies: [], enemies: [],
+  };
+}
+
 const GENERATORS = [
   { label: 'Generate Place (biome/region/city/planet/galaxy)', run: ({ subtype }) => generatePlace(rngFor(Math.random()), subtype || 'biome') },
-  {
-    label: 'Generate Faction', run: () => {
-      const rng = rngFor(Math.random());
-      return {
-        subtype: 'faction', name: generateFactionName(rng),
-        description: 'An organized group with its own agenda.',
-        ideology: 'Believes strength and order must be restored to a broken world.',
-        leader: '', territory: '',
-        goals: ['Expand influence', 'Secure resources', 'Eliminate rivals'],
-        allies: [], enemies: [],
-      };
-    },
-  },
+  { label: 'Generate Faction', run: () => generateFaction(rngFor(Math.random())) },
 ];
 
 export function mountWorld(container, opts) {

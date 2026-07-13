@@ -3,7 +3,7 @@ import { UI_SCREEN_TYPES } from '../generators/wordbank.js';
 import { rngFor } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 
-const SUBTYPES = UI_SCREEN_TYPES.map(t => ({ key: t.key, label: t.label, icon: '🖥️' }));
+export const SUBTYPES = UI_SCREEN_TYPES.map(t => ({ key: t.key, label: t.label, icon: '🖥️' }));
 
 const ACCESSIBILITY_OPTIONS = ['Colourblind modes', 'Remappable controls', 'Subtitles / closed captions', 'UI scale slider', 'High-contrast mode', 'Screen reader labels', 'Reduced motion toggle', 'Hold-to-toggle for QTEs'];
 
@@ -33,7 +33,7 @@ const ELEMENTS_BY_TYPE = {
   'loading': ['Progress bar', 'Tip text', 'Background art', 'Spinner'],
 };
 
-function generateScreen(rng, subtype) {
+export function generateScreen(rng, subtype) {
   const type = UI_SCREEN_TYPES.find(t => t.key === subtype) || UI_SCREEN_TYPES[0];
   return {
     name: type.label,

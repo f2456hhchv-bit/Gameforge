@@ -3,7 +3,7 @@ import { DAMAGE_TYPES, STATUS_EFFECTS } from '../generators/wordbank.js';
 import { rngFor, generateAbilityName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 
-const SUBTYPES = [
+export const SUBTYPES = [
   { key: 'ability', label: 'Ability', icon: '⚡' },
   { key: 'status-effect', label: 'Status Effect', icon: '☠️' },
   { key: 'damage-type', label: 'Damage Type', icon: '💥' },
@@ -75,19 +75,20 @@ function badgeFor(item) {
   return [{ text: s ? `${s.icon} ${s.label}` : item.subtype, cls: 'badge-accent' }];
 }
 
+export function generateAbility(rng) {
+  return {
+    subtype: 'ability', name: generateAbilityName(rng),
+    description: 'A combat ability ready for balancing.',
+    damageType: pick(DAMAGE_TYPES, rng), cooldown: Math.round(3 + rng() * 12),
+    resourceCost: `${Math.round(10 + rng() * 40)} Energy`, range: pick(['Melee', '5m', '10m', '20m (ranged)'], rng),
+    appliesEffects: rng() < 0.5 ? [pick(STATUS_EFFECTS, rng).name] : [],
+    balancingNotes: 'Initial pass — validate against DPS budget during playtesting.',
+  };
+}
+
 const GENERATORS = [
   {
-    label: 'Generate Ability', run: () => {
-      const rng = rngFor(Math.random());
-      return {
-        subtype: 'ability', name: generateAbilityName(rng),
-        description: 'A combat ability ready for balancing.',
-        damageType: pick(DAMAGE_TYPES, rng), cooldown: Math.round(3 + rng() * 12),
-        resourceCost: `${Math.round(10 + rng() * 40)} Energy`, range: pick(['Melee', '5m', '10m', '20m (ranged)'], rng),
-        appliesEffects: rng() < 0.5 ? [pick(STATUS_EFFECTS, rng).name] : [],
-        balancingNotes: 'Initial pass — validate against DPS budget during playtesting.',
-      };
-    },
+    label: 'Generate Ability', run: () => generateAbility(rngFor(Math.random())),
   },
   {
     label: 'Generate Status Effect (from library)', run: ({ index }) => {

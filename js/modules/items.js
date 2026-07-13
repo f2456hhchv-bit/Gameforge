@@ -4,7 +4,7 @@ import { pick, pickN } from '../util.js';
 import { RARITIES, badgeForRarity } from '../schema.js';
 import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE } from '../generators/wordbank.js';
 
-const SUBTYPES = [
+export const SUBTYPES = [
   { key: 'weapon', label: 'Weapon', icon: '🗡️' },
   { key: 'armor', label: 'Armour', icon: '🛡️' },
   { key: 'accessory', label: 'Accessory', icon: '💍' },
@@ -63,7 +63,7 @@ function genericStats(rng, subtype, rarity) {
   }
 }
 
-function generateItem(rng, subtype) {
+export function generateItem(rng, subtype) {
   const rarity = rarityRoll(rng);
   let name, description;
   if (subtype === 'weapon') {

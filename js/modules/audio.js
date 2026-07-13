@@ -3,7 +3,7 @@ import { AUDIO_TYPES, MOODS } from '../generators/wordbank.js';
 import { rngFor } from '../generators/procedural.js';
 import { pick } from '../util.js';
 
-const SUBTYPES = AUDIO_TYPES.map(t => ({ key: t.key, label: t.label, icon: { music: '🎵', sfx: '💥', ambience: '🌫️', voice: '🎙️', 'ui-sound': '🔘' }[t.key] || '🔊' }));
+export const SUBTYPES = AUDIO_TYPES.map(t => ({ key: t.key, label: t.label, icon: { music: '🎵', sfx: '💥', ambience: '🌫️', voice: '🎙️', 'ui-sound': '🔘' }[t.key] || '🔊' }));
 
 const FIELDS = [
   { key: 'mood', label: 'Mood', type: 'select', options: MOODS },
@@ -30,7 +30,7 @@ const TRIGGER_TEMPLATES = {
   'ui-sound': ['On button hover', 'On button click', 'On menu open/close', 'On error/invalid action'],
 };
 
-function generateAudio(rng, subtype) {
+export function generateAudio(rng, subtype) {
   const type = AUDIO_TYPES.find(t => t.key === subtype) || AUDIO_TYPES[0];
   const triggers = TRIGGER_TEMPLATES[type.key] || TRIGGER_TEMPLATES.sfx;
   return {

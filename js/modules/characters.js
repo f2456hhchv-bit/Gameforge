@@ -3,7 +3,7 @@ import { rngFor, generateCharacterName, generateCreatureName, statBlockForLevel,
 import { pick, pickN } from '../util.js';
 import { DAMAGE_TYPES } from '../generators/wordbank.js';
 
-const SUBTYPES = [
+export const SUBTYPES = [
   { key: 'player', label: 'Player Character', icon: '🦸' },
   { key: 'enemy', label: 'Enemy', icon: '👹' },
   { key: 'boss', label: 'Boss', icon: '🐲' },
@@ -48,7 +48,7 @@ const BEHAVIOUR_BY_SUBTYPE = {
   player: 'Fully player-controlled; no autonomous behaviour.',
 };
 
-function generateCharacter(rng, subtype) {
+export function generateCharacter(rng, subtype) {
   const level = 1 + Math.floor(rng() * 20);
   const isCombat = ['enemy', 'boss', 'wildlife'].includes(subtype);
   const name = subtype === 'enemy' || subtype === 'boss' || subtype === 'wildlife' ? generateCreatureName(rng) : generateCharacterName(rng, subtype);
