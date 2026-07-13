@@ -11,6 +11,10 @@ export const SUBTYPES = [
   { key: 'faction', label: 'Faction Quest', icon: '🚩' },
   { key: 'world-event', label: 'World Event', icon: '🌐' },
   { key: 'repeatable', label: 'Repeatable / Daily', icon: '🔁' },
+  { key: 'escort', label: 'Escort', icon: '🚶' },
+  { key: 'collection', label: 'Collection', icon: '📦' },
+  { key: 'investigation', label: 'Investigation / Mystery', icon: '🔍' },
+  { key: 'timed-event', label: 'Timed Event', icon: '⏱️' },
 ];
 
 const FIELDS = [
@@ -26,6 +30,8 @@ const FIELDS = [
   { key: 'rewardXP', label: 'Reward XP', type: 'number' },
   { key: 'repeatable', label: 'Repeatable?', type: 'select', options: ['No', 'Daily', 'Weekly', 'Unlimited'] },
   { key: 'prerequisiteQuests', label: 'Prerequisite Quests', type: 'relation-multi', target: 'quests' },
+  { key: 'branchingOutcomes', label: 'Branching Outcomes', type: 'list', cols: 2, placeholder: 'e.g. Spare the warlord: faction gains a spy; Kill the warlord: faction gains territory' },
+  { key: 'companionApproval', label: 'Companion Approval Effects', type: 'textarea', cols: 2, placeholder: 'Which companions approve/disapprove of each choice, and by how much…' },
 ];
 
 function badgeFor(item) {
@@ -37,28 +43,41 @@ function cardMeta(item) {
   return (item.objectives || [])[0] || item.description;
 }
 
+const SUBTYPE_QUEST_FLAVOR = {
+  escort: { verb: 'Escort', failureConditions: ['Escort target dies before reaching the destination'], branching: 'Player may take the safe long route or the dangerous shortcut, trading time for risk.' },
+  collection: { verb: 'Recover', failureConditions: [], branching: '' },
+  investigation: { verb: 'Investigate', failureConditions: ['Key witness dies or flees before being questioned'], branching: 'Player may accuse the wrong suspect if evidence is misread, locking out the true culprit\'s resolution.' },
+  'timed-event': { verb: 'Defend', failureConditions: ['Time limit expires before the objective completes'], branching: '' },
+};
+
 function generateQuest(rng, subtype) {
   const givers = store.list('characters').filter(c => ['npc', 'merchant'].includes(c.subtype));
   const locations = store.list('biomes').filter(b => b.subtype !== 'faction');
   const giver = givers.length ? pick(givers, rng) : null;
   const location = locations.length ? pick(locations, rng) : null;
-  const verb = pick(QUEST_VERBS, rng);
+  const flavor = SUBTYPE_QUEST_FLAVOR[subtype];
+  const verb = flavor ? flavor.verb : pick(QUEST_VERBS, rng);
   const target = pick(QUEST_TARGETS, rng);
   const links = {};
   if (giver) links.giver = giver.id;
   if (location) links.location = location.id;
+  const collectionCount = subtype === 'collection' ? 3 + Math.floor(rng() * 5) : null;
   return {
     name: generateQuestName(rng),
     description: `${verb} ${target}.`,
-    stages: [`Stage 1: Speak with ${giver ? giver.name : 'the quest giver'}`, `Stage 2: ${verb} ${target}`, 'Stage 3: Return and report'],
-    objectives: [`${verb} ${target}`],
+    stages: subtype === 'collection'
+      ? [`Stage 1: Speak with ${giver ? giver.name : 'the quest giver'}`, `Stage 2: Recover ${collectionCount}x ${target}`, 'Stage 3: Return and report']
+      : [`Stage 1: Speak with ${giver ? giver.name : 'the quest giver'}`, `Stage 2: ${verb} ${target}`, 'Stage 3: Return and report'],
+    objectives: subtype === 'collection' ? [`Recover ${collectionCount}x ${target}`] : [`${verb} ${target}`],
     dialogue: giver ? `"${giver.name}" briefs the player on why ${target} matters.` : '',
-    branching: rng() < 0.4 ? 'Player may choose to negotiate instead of fighting, altering the reward and faction standing.' : '',
-    failureConditions: rng() < 0.3 ? ['Quest giver dies before completion', 'Time limit expires'] : [],
+    branching: flavor ? flavor.branching : (rng() < 0.4 ? 'Player may choose to negotiate instead of fighting, altering the reward and faction standing.' : ''),
+    failureConditions: flavor ? flavor.failureConditions : (rng() < 0.3 ? ['Quest giver dies before completion', 'Time limit expires'] : []),
     rewards: [],
     rewardXP: Math.round(50 + rng() * 450),
     repeatable: subtype === 'repeatable' ? pick(['Daily', 'Weekly'], rng) : 'No',
     prerequisiteQuests: [],
+    branchingOutcomes: flavor && flavor.branching ? [flavor.branching] : [],
+    companionApproval: '',
     links,
   };
 }
@@ -96,7 +115,7 @@ export function mountQuests(container, opts) {
     key: 'quests', singular: 'Quest', plural: 'Quests', icon: '📯',
     subtypes: SUBTYPES,
     fields: FIELDS,
-    makeDefaults: () => ({ stages: [], objectives: [], failureConditions: [], rewards: [], prerequisiteQuests: [] }),
+    makeDefaults: () => ({ stages: [], objectives: [], failureConditions: [], rewards: [], prerequisiteQuests: [], branchingOutcomes: [] }),
     cardBadges: badgeFor,
     cardMeta,
     generators: GENERATORS,
@@ -104,7 +123,7 @@ export function mountQuests(container, opts) {
       category: 'writing', estimateHours: 5, title: (i) => `Write & implement quest: ${i.name}`,
       description: `Script dialogue, wire up quest state, and playtest "${item.name}".`,
     }),
-    helpText: 'Main quests, side quests, faction quests, world events and repeatables — with stages, dialogue, branching, rewards and prerequisites.',
+    helpText: 'Main quests, side quests, faction quests, world events, repeatables, escorts, collections, investigations and timed events — with stages, dialogue, branching outcomes, companion approval effects, rewards and prerequisites.',
   });
   return view.mount(container, opts);
 }
