@@ -106,7 +106,11 @@ export function mountGraph(container) {
     const { nodes, edges } = buildGraphData([...state.enabled]);
     state.nodes = nodes;
     state.edges = edges;
-    layout(nodes, edges, 900, 640, nodes.length > 120 ? 80 : 220);
+    // The layout is O(n^2) per iteration, so scale iterations down smoothly as
+    // the project grows rather than a hard cutoff — every entity still renders
+    // as a node (nothing is ever dropped), it just settles less precisely.
+    const iterations = Math.max(30, Math.min(220, Math.round(28000 / Math.max(nodes.length, 1))));
+    layout(nodes, edges, 900, 640, iterations);
   }
 
   const svgNS = 'http://www.w3.org/2000/svg';
