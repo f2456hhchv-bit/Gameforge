@@ -21,6 +21,7 @@ import { generateScreen, SUBTYPES as UI_SUBTYPES } from './uiDesigner.js';
 import { generateAudio } from './audio.js';
 import { generateQuest, generateQuestChainEntry } from './quests.js';
 import { runProjectAudit } from '../audit.js';
+import { suggestLinks, applyAllLinkSuggestions } from '../linking.js';
 
 // Ordered most-specific-first so e.g. "weapon" matches before generic "item".
 // `taskFor` mirrors the onCreate hook each module's own UI wires into
@@ -164,6 +165,7 @@ const HELP_TEXT = `I'm a local command assistant — everything I do runs entire
 • "improve progression" (updates the Difficulty doc + adds a task)
 • "rewrite the lore" (regenerates lore for every world entry)
 • "audit the project" / "what's missing" (finds unlinked entities, missing rewards, empty descriptions and untouched design docs)
+• "auto-link things" / "fix links" (links quest givers/locations, enemy spawn biomes, boss drops and level biomes/enemies wherever there's exactly one sane candidate)
 • "generate a legendary set" (matched weapon+armor+accessory) / "generate a starter loadout"
 • "generate a faction roster" (leader + themed members) / "generate a boss gauntlet" (escalating difficulty sequence)
 • "generate a continent" (large, multi-biome world entry)
@@ -191,6 +193,12 @@ function handleCommand(text) {
   }
   if (/\baudit\b/.test(lower) || /what'?s missing/.test(lower) || /\bgaps?\b/.test(lower)) {
     return formatAudit();
+  }
+  if (/\blink/.test(lower) && /(auto|suggest|fix|up)/.test(lower)) {
+    const pending = suggestLinks();
+    if (!pending.length) return "Nothing to auto-link right now — every unambiguous link is already set. Anything left needs a human judgment call.";
+    const applied = applyAllLinkSuggestions();
+    return `Applied ${applied} auto-link suggestion(s): ${pending.slice(0, 8).map(s => `${s.field} on an entity → ${s.valueLabel}`).join(', ')}${pending.length > 8 ? ` (+${pending.length - 8} more)` : ''}. Open the Dashboard's Auto-Link panel or Ctrl+Z to review/undo.`;
   }
   if (/legendary set|matched set/.test(lower)) {
     const count = extractCount(lower, 3);

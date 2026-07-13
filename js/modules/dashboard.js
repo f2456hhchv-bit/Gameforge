@@ -5,6 +5,7 @@ import { openModal, closeTopModal, toast } from '../components/ui.js';
 import { openEntity } from '../router.js';
 import { barChart, areaSparkline } from '../components/charts.js';
 import { runProjectAudit } from '../audit.js';
+import { suggestLinks, applyLinkSuggestion, applyAllLinkSuggestions } from '../linking.js';
 import { SUBTYPES as ITEM_SUBTYPES } from './items.js';
 import { SUBTYPES as CHARACTER_SUBTYPES } from './characters.js';
 import { SUBTYPES as QUEST_SUBTYPES } from './quests.js';
@@ -247,6 +248,38 @@ export function mountDashboard(container) {
         : h('p', { class: 'text-sm text-slate-400' }, 'No gaps found — everything checked looks linked and filled in. Nice work!'),
     ]);
 
+    const linkSuggestions = suggestLinks();
+    const linkPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
+      h('div', { class: 'flex items-center justify-between' }, [
+        h('h3', { class: 'font-semibold' }, 'Auto-Link Suggestions'),
+        linkSuggestions.length ? h('button', {
+          class: 'btn-ghost text-xs', onclick: () => {
+            const n = applyAllLinkSuggestions();
+            toast(`Applied ${n} link suggestion(s)`, { type: 'success' });
+            render();
+          },
+        }, `Apply All (${linkSuggestions.length})`) : null,
+      ].filter(Boolean)),
+      linkSuggestions.length
+        ? h('div', { class: 'flex flex-col gap-2' }, linkSuggestions.map(s => h('div', { class: 'flex items-center gap-2 text-sm' }, [
+          h('span', { class: 'flex-1 min-w-0' }, [
+            h('span', {}, `Link `),
+            h('button', { class: 'badge badge-gray hover:opacity-70 transition-opacity cursor-pointer', onclick: () => openEntity(s.collection, s.id) }, store.get(s.collection, s.id)?.name || 'Untitled'),
+            h('span', {}, ` → ${s.field}: `),
+            h('span', { class: 'font-medium' }, s.valueLabel),
+            h('span', { class: 'text-xs text-slate-400 block' }, s.reason),
+          ]),
+          h('button', {
+            class: 'btn-secondary text-xs shrink-0', onclick: () => {
+              applyLinkSuggestion(s);
+              toast('Link applied', { type: 'success' });
+              render();
+            },
+          }, 'Apply'),
+        ])))
+        : h('p', { class: 'text-sm text-slate-400' }, 'No confident auto-link suggestions right now — anything ambiguous is left for you to decide.'),
+    ]);
+
     const milestones = project.collections.milestones;
     const milestonesPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
       h('div', { class: 'flex items-center justify-between' }, [
@@ -285,7 +318,7 @@ export function mountDashboard(container) {
 
     const grid = h('div', { class: 'grid grid-cols-1 lg:grid-cols-3 gap-4 p-5' }, [
       h('div', { class: 'lg:col-span-2 flex flex-col gap-4' }, [progressPanel, distributionPanel, growthPanel, taskChartPanel, activityPanel]),
-      h('div', { class: 'flex flex-col gap-4' }, [auditPanel, milestonesPanel, quickLinks]),
+      h('div', { class: 'flex flex-col gap-4' }, [auditPanel, linkPanel, milestonesPanel, quickLinks]),
     ]);
 
     container.append(header, overviewGrid, grid);

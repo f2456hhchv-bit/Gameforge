@@ -30,7 +30,7 @@ Then open `http://localhost:8080/index.html`. Note: opening `index.html` directl
 - **Relationship Graph** — every entity in the project as a node, every reference as an edge, laid out with a real force-directed algorithm — pan/zoom/drag, click a node to jump to it.
 - **AI Assistant** — a persistent chat panel (local, deterministic command parser — no external LLM) that can generate content in bulk, balance enemies, draft quests, tune progression, and rewrite lore on request.
 
-Everything is linked: characters reference biomes and drop items, levels reference enemies and loot tables, tasks reference whatever entity spawned them — click through via the "Referenced By" section on any entity, or see the whole web at once in the Relationship Graph.
+Everything is linked: characters reference biomes and drop items, levels reference enemies and loot tables, tasks reference whatever entity spawned them — click through via the "Referenced By" section on any entity, or see the whole web at once in the Relationship Graph. The Dashboard's **Auto-Link Suggestions** panel (and the assistant's "auto-link things" command) finds gaps with exactly one sane fix — e.g. a quest with a location but no giver, when only one NPC spawns there — and applies them with one click; anything ambiguous is left for you to decide by hand.
 
 ## Starter templates
 
