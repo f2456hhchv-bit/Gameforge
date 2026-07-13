@@ -24,6 +24,17 @@ export function createCollectionView(config) {
 
   let state = { search: '', subtypeFilter: 'all', sort: 'updated', selectedId: null, tagFilter: null, listWidth: 320, checked: new Set(), bulkMode: false };
   let unsubscribe = null;
+
+  // Below this width the list+detail two-panel layout doesn't fit
+  // side-by-side (matches Tailwind's md breakpoint); switch to a single pane
+  // that shows either the list or the selected item, never both at once.
+  const MOBILE_BREAKPOINT = 768;
+  const isMobile = () => window.innerWidth < MOBILE_BREAKPOINT;
+  let lastIsMobile = isMobile();
+  function onWindowResize() {
+    const mobile = isMobile();
+    if (mobile !== lastIsMobile) { lastIsMobile = mobile; render(); }
+  }
   let rootEl = null;
 
   function filteredItems() {
@@ -419,13 +430,13 @@ export function createCollectionView(config) {
   function render() {
     if (!rootEl) return;
     rootEl.innerHTML = '';
-    const toolbar = h('div', { class: 'flex items-center justify-between px-4 py-3 border-b border-surface-3/60' }, [
+    const toolbar = h('div', { class: 'flex items-center justify-between px-4 py-3 border-b border-surface-3/60 flex-wrap gap-2' }, [
       h('div', { class: 'flex items-center gap-2' }, [
         h('span', { class: 'text-xl' }, icon),
         h('h2', { class: 'text-lg font-semibold' }, plural),
         h('span', { class: 'badge-gray' }, store.list(key).length),
       ]),
-      h('div', { class: 'flex gap-2' }, [
+      h('div', { class: 'flex gap-2 flex-wrap' }, [
         h('button', {
           class: `btn-secondary ${state.bulkMode ? 'bg-accent-muted text-accent' : ''}`,
           onclick: () => { state.bulkMode = !state.bulkMode; if (!state.bulkMode) state.checked.clear(); render(); },
@@ -440,14 +451,30 @@ export function createCollectionView(config) {
     filterContainer = renderFilters();
     listContainer = renderList();
     const bulkBar = renderBulkBar();
-    const listPanel = h('div', { class: 'shrink-0 border-r border-surface-3/60 flex flex-col', style: `width:${state.listWidth}px` }, [bulkBar, filterContainer, listContainer].filter(Boolean));
-    const resizeHandle = h('div', { class: 'w-1 shrink-0 cursor-col-resize hover:bg-accent/50 transition-colors', title: 'Drag to resize' });
-    attachResizer(resizeHandle, listPanel);
     const detailPanel = state.bulkMode
       ? h('div', { class: 'empty-state flex-1' }, [h('div', { class: 'text-4xl' }, '☑'), h('p', { class: 'font-medium text-slate-500' }, 'Check items in the list, then use the bar above to tag, duplicate or delete them together.')])
       : renderDetail();
 
-    const body = h('div', { class: 'flex flex-1 overflow-hidden' }, [listPanel, resizeHandle, detailPanel]);
+    let body;
+    if (isMobile()) {
+      // Single pane: the list and detail can't fit side by side on a phone
+      // width, so show whichever is relevant — the list, or (once something
+      // is selected) the detail with a Back button to return to the list.
+      const listPanel = h('div', { class: 'flex-1 flex flex-col overflow-hidden' }, [bulkBar, filterContainer, listContainer].filter(Boolean));
+      if (!state.bulkMode && state.selectedId) {
+        const backBar = h('div', { class: 'shrink-0 border-b border-surface-3/60 p-2' }, [
+          h('button', { class: 'btn-ghost text-sm', onclick: () => { state.selectedId = null; render(); } }, `← Back to ${plural}`),
+        ]);
+        body = h('div', { class: 'flex flex-1 overflow-hidden flex-col' }, [backBar, detailPanel]);
+      } else {
+        body = h('div', { class: 'flex flex-1 overflow-hidden flex-col' }, [listPanel]);
+      }
+    } else {
+      const listPanel = h('div', { class: 'shrink-0 border-r border-surface-3/60 flex flex-col', style: `width:${state.listWidth}px` }, [bulkBar, filterContainer, listContainer].filter(Boolean));
+      const resizeHandle = h('div', { class: 'w-1 shrink-0 cursor-col-resize hover:bg-accent/50 transition-colors', title: 'Drag to resize' });
+      attachResizer(resizeHandle, listPanel);
+      body = h('div', { class: 'flex flex-1 overflow-hidden' }, [listPanel, resizeHandle, detailPanel]);
+    }
     rootEl.append(toolbar, body);
   }
 
@@ -460,10 +487,12 @@ export function createCollectionView(config) {
       unsubscribe = store.on((project, reason) => { if (reason.startsWith('mutate') || reason === 'undo' || reason === 'redo' || reason === 'load') render(); });
       window.addEventListener('mousemove', onResizeMouseMove);
       window.addEventListener('mouseup', onResizeMouseUp);
+      window.addEventListener('resize', onWindowResize);
       return () => {
         unsubscribe && unsubscribe();
         window.removeEventListener('mousemove', onResizeMouseMove);
         window.removeEventListener('mouseup', onResizeMouseUp);
+        window.removeEventListener('resize', onWindowResize);
       };
     },
     select(id) { state.selectedId = id; render(); },

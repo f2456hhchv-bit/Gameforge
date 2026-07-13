@@ -259,8 +259,11 @@ function openCompileModal() {
   openModal(modalBody, { title: '📚 Compile Master Document', width: '720px' });
 }
 
+const MOBILE_BREAKPOINT = 768;
+const isMobile = () => window.innerWidth < MOBILE_BREAKPOINT;
+
 export function mountDocs(container) {
-  const state = { activeKey: DOC_TYPES[0].key, mode: 'edit' };
+  const state = { activeKey: DOC_TYPES[0].key, mode: 'edit', mobileShowList: true };
 
   function currentDoc(key) {
     return list('docs').find(d => d.subtype === key);
@@ -296,7 +299,7 @@ export function mountDocs(container) {
           const d = currentDoc(t.key);
           return h('div', {
             class: `rounded-lg px-3 py-2.5 cursor-pointer ${state.activeKey === t.key ? 'bg-accent-muted' : 'hover:bg-surface-2'}`,
-            onclick: () => { state.activeKey = t.key; render(); },
+            onclick: () => { state.activeKey = t.key; state.mobileShowList = false; render(); },
           }, [
             h('div', { class: 'flex items-center gap-2' }, [h('span', {}, t.icon), h('span', { class: 'font-medium text-sm' }, t.label)]),
             h('div', { class: 'text-xs text-slate-400 mt-0.5' }, d ? `Generated ${timeAgo(d.updatedAt)}` : 'Not generated yet'),
@@ -348,9 +351,28 @@ export function mountDocs(container) {
       contentArea = h('div', { class: 'flex flex-col flex-1 overflow-hidden' }, [toolbar, h('div', { class: 'flex-1 overflow-y-auto scroll-thin p-4 flex flex-col' }, [state.mode === 'edit' ? textarea : preview])]);
     }
 
-    container.append(h('div', { class: 'flex h-full' }, [listPanel, h('div', { class: 'flex flex-col flex-1 overflow-hidden' }, [contentArea])]));
+    if (isMobile()) {
+      // The list-of-doc-types and the doc content can't fit side by side on
+      // a phone width — show one pane at a time with a Back button.
+      if (state.mobileShowList) {
+        container.append(h('div', { class: 'flex flex-col h-full' }, [listPanel]));
+      } else {
+        const backBar = h('div', { class: 'shrink-0 border-b border-surface-3/60 p-2' }, [
+          h('button', { class: 'btn-ghost text-sm', onclick: () => { state.mobileShowList = true; render(); } }, '← Back to Documents'),
+        ]);
+        container.append(h('div', { class: 'flex flex-col h-full overflow-hidden' }, [backBar, contentArea]));
+      }
+    } else {
+      container.append(h('div', { class: 'flex h-full' }, [listPanel, h('div', { class: 'flex flex-col flex-1 overflow-hidden' }, [contentArea])]));
+    }
   }
 
+  let lastIsMobile = isMobile();
+  function onWindowResize() {
+    const mobile = isMobile();
+    if (mobile !== lastIsMobile) { lastIsMobile = mobile; render(); }
+  }
   render();
-  return () => {};
+  window.addEventListener('resize', onWindowResize);
+  return () => { window.removeEventListener('resize', onWindowResize); };
 }
