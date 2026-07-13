@@ -1,5 +1,5 @@
 import { h, uid, debounce, timeAgo, download } from './util.js';
-import { DB } from './db.js';
+import { DB, isUsingFallbackStorage } from './db.js';
 import { store } from './store.js';
 import { MODULES, resolveModuleKey, getModule } from './modules/registry.js';
 import { setNavigationHandler } from './router.js';
@@ -47,6 +47,20 @@ async function createProjectWithTemplate(name) {
   return project;
 }
 
+// If IndexedDB is unavailable (Firefox blocks it entirely under file://;
+// some locked-down browsers/extensions do too), db.js transparently falls
+// back to an in-memory store so the app still works this session — but
+// nothing will survive a reload/close, so make that unmissable rather than
+// letting people lose work silently.
+function fallbackStorageBanner() {
+  if (!isUsingFallbackStorage()) return null;
+  const banner = h('div', { class: 'shrink-0 bg-amber-500 text-amber-950 text-sm px-4 py-2 flex items-center justify-between gap-3' }, [
+    h('span', {}, '⚠️ This browser/mode blocked local storage — nothing here will be saved after you close or reload the page. For real persistence, open this file in Chrome or Edge instead, or use the hosted version.'),
+    h('button', { class: 'shrink-0 hover:opacity-70', 'aria-label': 'Dismiss warning', onclick: () => banner.remove() }, '✕'),
+  ]);
+  return banner;
+}
+
 function renderWelcome() {
   root.innerHTML = '';
   const nameInput = h('input', { class: 'input text-base', placeholder: 'e.g. Ashfall Chronicles', onkeydown: e => { if (e.key === 'Enter') create(); } });
@@ -55,18 +69,21 @@ function renderWelcome() {
     await createProjectWithTemplate(nameInput.value.trim());
     renderShell();
   }
-  root.appendChild(h('div', { class: 'h-screen flex items-center justify-center' }, [
-    h('div', { class: 'card p-10 w-[440px] flex flex-col gap-5 items-center text-center' }, [
-      h('div', { class: 'text-5xl' }, '🎮'),
-      h('h1', { class: 'text-2xl font-bold' }, 'GameForge Studio'),
-      h('p', { class: 'text-sm text-slate-400' }, 'A complete pre-production & production planning toolkit. Everything is stored locally in your browser — nothing leaves this device.'),
-      h('div', { class: 'w-full flex flex-col gap-2 text-left' }, [
-        h('label', { class: 'label' }, 'Name your first project'),
-        nameInput,
+  root.appendChild(h('div', { class: 'h-screen flex flex-col' }, [
+    fallbackStorageBanner(),
+    h('div', { class: 'flex-1 flex items-center justify-center overflow-auto' }, [
+      h('div', { class: 'card p-10 w-[440px] flex flex-col gap-5 items-center text-center' }, [
+        h('div', { class: 'text-5xl' }, '🎮'),
+        h('h1', { class: 'text-2xl font-bold' }, 'GameForge Studio'),
+        h('p', { class: 'text-sm text-slate-400' }, 'A complete pre-production & production planning toolkit. Everything is stored locally in your browser — nothing leaves this device.'),
+        h('div', { class: 'w-full flex flex-col gap-2 text-left' }, [
+          h('label', { class: 'label' }, 'Name your first project'),
+          nameInput,
+        ]),
+        h('button', { class: 'btn-primary w-full justify-center py-2', onclick: create }, '✨ Create Project'),
       ]),
-      h('button', { class: 'btn-primary w-full justify-center py-2', onclick: create }, '✨ Create Project'),
     ]),
-  ]));
+  ].filter(Boolean)));
   setTimeout(() => nameInput.focus(), 50);
 }
 
@@ -384,7 +401,7 @@ async function initTheme() {
 
 function renderShell() {
   root.innerHTML = '';
-  root.appendChild(h('div', { class: 'flex h-screen overflow-hidden' }, [
+  const shellRow = h('div', { class: 'flex flex-1 overflow-hidden' }, [
     h('aside', { class: 'w-56 shrink-0 border-r border-surface-3/60 flex flex-col bg-surface-0' }, [
       h('div', { class: 'flex items-center gap-2 px-4 h-14 border-b border-surface-3/60 shrink-0' }, [
         h('span', { class: 'text-xl' }, '🎮'), h('span', { class: 'font-bold' }, 'GameForge'),
@@ -399,7 +416,8 @@ function renderShell() {
     h('aside', { id: 'assistant-panel', class: 'w-0 shrink-0 overflow-hidden flex flex-col bg-surface-0 border-surface-3/60 transition-all duration-150' }, [
       h('div', { id: 'assistant-panel-body', class: 'flex flex-col h-full w-96' }),
     ]),
-  ]));
+  ]);
+  root.appendChild(h('div', { class: 'h-screen flex flex-col' }, [fallbackStorageBanner(), shellRow].filter(Boolean)));
   renderSidebar();
   renderTopbar();
   store.on((project, reason) => {
