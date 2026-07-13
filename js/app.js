@@ -173,23 +173,36 @@ function renderSidebar() {
     for (const mod of MODULES.filter(m => m.group === group)) {
       nav.appendChild(h('div', {
         class: `nav-item ${tabState.activeKey === mod.key ? 'active' : ''}`,
-        onclick: () => openTab(mod.key),
+        onclick: () => { openTab(mod.key); closeMobileSidebar(); },
       }, [h('span', {}, mod.icon), h('span', {}, mod.label)]));
     }
   }
 }
+
+// ---------- Mobile sidebar (off-canvas below the md breakpoint) ----------
+const mobileSidebarState = { open: false };
+
+function setMobileSidebar(open) {
+  mobileSidebarState.open = open;
+  document.getElementById('sidebar-aside')?.classList.toggle('-translate-x-full', !open);
+  document.getElementById('sidebar-backdrop')?.classList.toggle('hidden', !open);
+}
+function toggleMobileSidebar() { setMobileSidebar(!mobileSidebarState.open); }
+function closeMobileSidebar() { if (mobileSidebarState.open) setMobileSidebar(false); }
 
 function renderTopbar() {
   const bar = document.getElementById('topbar');
   bar.innerHTML = '';
   const project = store.project;
 
-  const projSwitch = h('button', {
-    class: 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-surface-2 text-sm font-semibold',
-    onclick: openProjectSwitcher,
-  }, [h('span', {}, '🎮'), h('span', { class: 'max-w-[220px] truncate' }, project?.name || 'No project'), h('span', { class: 'text-xs text-slate-400' }, '▾')]);
+  const menuBtn = h('button', { class: 'btn-icon md:hidden', title: 'Menu', 'aria-label': 'Open navigation menu', onclick: toggleMobileSidebar }, '☰');
 
-  const saveIndicator = h('span', { id: 'save-indicator', class: 'text-xs text-slate-400 flex items-center gap-1' }, ['●', ' Saved']);
+  const projSwitch = h('button', {
+    class: 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-surface-2 text-sm font-semibold min-w-0',
+    onclick: openProjectSwitcher,
+  }, [h('span', {}, '🎮'), h('span', { class: 'max-w-[120px] sm:max-w-[220px] truncate' }, project?.name || 'No project'), h('span', { class: 'text-xs text-slate-400' }, '▾')]);
+
+  const saveIndicator = h('span', { id: 'save-indicator', class: 'text-xs text-slate-400 flex items-center gap-1' }, [h('span', {}, '●'), h('span', { class: 'hidden md:inline' }, ' Saved')]);
 
   const undoBtn = h('button', {
     class: 'btn-icon', title: 'Undo (Ctrl+Z)', 'aria-label': 'Undo', disabled: !store.canUndo(),
@@ -203,19 +216,29 @@ function renderTopbar() {
   const isDark = document.documentElement.classList.contains('dark');
   const themeBtn = h('button', { class: 'btn-icon', title: 'Toggle dark mode', 'aria-label': isDark ? 'Switch to light mode' : 'Switch to dark mode', onclick: toggleTheme }, isDark ? '☀️' : '🌙');
   const accentBtn = h('button', { class: 'btn-icon', title: 'Accent colour', 'aria-label': 'Choose accent colour', onclick: openAccentPicker }, '🎨');
-  const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', 'aria-label': 'Search', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
+  const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', 'aria-label': 'Search', onclick: openCommandPalette }, [
+    h('span', {}, '🔍'), h('span', { class: 'hidden sm:inline' }, ' Search…'),
+    h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded hidden sm:inline' }, 'Ctrl K'),
+  ]);
   const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', 'aria-label': 'Project backup menu', onclick: openBackupMenu }, '⋮');
   const helpBtn = h('button', { class: 'btn-icon', title: 'Keyboard shortcuts (?)', 'aria-label': 'Keyboard shortcuts', onclick: openShortcutsModal }, '⌨');
   const liveSiteLink = h('a', {
     href: LIVE_SITE_URL, target: '_blank', rel: 'noopener noreferrer',
     class: 'btn-icon', title: 'Open the live hosted site in a new tab', 'aria-label': 'Open live site',
   }, '🔗');
-  const assistantBtn = h('button', { class: 'btn-secondary text-sm', title: 'AI Assistant', onclick: toggleAssistant }, ['🤖 Assistant']);
+  const assistantBtn = h('button', { class: 'btn-secondary text-sm', title: 'AI Assistant', onclick: toggleAssistant }, [h('span', {}, '🤖'), h('span', { class: 'hidden sm:inline' }, ' Assistant')]);
 
   bar.append(
-    h('div', { class: 'flex items-center gap-1' }, [projSwitch]),
-    h('div', { class: 'flex-1 flex justify-center' }, [searchBtn]),
-    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, accentBtn, liveSiteLink, helpBtn, backupBtn, assistantBtn]),
+    h('div', { class: 'flex items-center gap-1 shrink-0' }, [menuBtn, projSwitch]),
+    h('div', { class: 'flex-1 min-w-0 flex justify-center' }, [searchBtn]),
+    h('div', { class: 'flex items-center gap-1 shrink-0' }, [
+      saveIndicator, undoBtn, redoBtn,
+      // Theme/accent/help/backup/live-site are all reachable via the search/
+      // command-palette's Quick Actions, so they're desktop-only chrome —
+      // there's no room for them on a phone-width topbar.
+      h('div', { class: 'hidden md:flex items-center gap-1' }, [themeBtn, accentBtn, liveSiteLink, helpBtn, backupBtn]),
+      assistantBtn,
+    ]),
   );
 }
 
@@ -321,8 +344,8 @@ function openBackupMenu() {
 function updateSaveIndicator(reason) {
   const el = document.getElementById('save-indicator');
   if (!el) return;
-  if (reason === 'dirty') el.innerHTML = '<span class="text-amber-500">●</span> Saving…';
-  else if (reason === 'saved') el.innerHTML = '<span class="text-emerald-500">●</span> Saved';
+  if (reason === 'dirty') el.innerHTML = '<span class="text-amber-500">●</span><span class="hidden md:inline"> Saving…</span>';
+  else if (reason === 'saved') el.innerHTML = '<span class="text-emerald-500">●</span><span class="hidden md:inline"> Saved</span>';
 }
 
 async function openProjectSwitcher() {
@@ -418,6 +441,7 @@ const QUICK_ACTIONS = [
   { label: 'Project Backup / Restore', icon: '⋮', run: () => openBackupMenu() },
   { label: 'Export Full Project to Excel', icon: '📊', run: () => exportFullProjectExcel() },
   { label: 'Keyboard Shortcuts', icon: '⌨', run: () => openShortcutsModal() },
+  { label: 'Open Live Site', icon: '🔗', run: () => window.open(LIVE_SITE_URL, '_blank', 'noopener,noreferrer') },
   { label: 'Run Project Audit', icon: '🩺', run: () => { const { summary } = runProjectAudit(); toast(summary, { type: 'info' }); openTab('dashboard'); } },
   { label: 'Suggest a Genre Mashup', icon: '🧬', run: () => { const { combo } = generateMashupBrief(); toast(`Genre mashup: ${combo.name} (${combo.combo.join(' + ')})`, { type: 'success' }); openTab('designer'); } },
 ];
@@ -511,15 +535,25 @@ async function initTheme() {
 
 function renderShell() {
   root.innerHTML = '';
-  const shellRow = h('div', { class: 'flex flex-1 overflow-hidden' }, [
-    h('aside', { class: 'w-56 shrink-0 border-r border-surface-3/60 flex flex-col bg-surface-0' }, [
+  // Sidebar is a fixed off-canvas drawer below the md breakpoint (mobile/
+  // portrait phones), toggled by the topbar's ☰ button, and reverts to a
+  // normal static column at md+ regardless of the drawer's open/closed state.
+  const shellRow = h('div', { class: 'flex flex-1 overflow-hidden relative' }, [
+    h('div', {
+      id: 'sidebar-backdrop', class: 'hidden fixed inset-0 bg-black/50 z-20 md:hidden',
+      onclick: closeMobileSidebar,
+    }),
+    h('aside', {
+      id: 'sidebar-aside',
+      class: 'fixed inset-y-0 left-0 z-30 w-64 -translate-x-full transition-transform duration-200 md:static md:translate-x-0 md:z-auto md:w-56 shrink-0 border-r border-surface-3/60 flex flex-col bg-surface-0',
+    }, [
       h('div', { class: 'flex items-center gap-2 px-4 h-14 border-b border-surface-3/60 shrink-0' }, [
         h('span', { class: 'text-xl' }, '🎮'), h('span', { class: 'font-bold' }, 'GameForge'),
       ]),
       h('nav', { id: 'sidebar-nav', class: 'flex-1 overflow-y-auto scroll-thin px-2 py-2' }),
     ]),
-    h('div', { class: 'flex-1 flex flex-col overflow-hidden' }, [
-      h('header', { id: 'topbar', class: 'h-14 shrink-0 border-b border-surface-3/60 flex items-center justify-between px-3 bg-surface-0' }),
+    h('div', { class: 'flex-1 flex flex-col overflow-hidden min-w-0' }, [
+      h('header', { id: 'topbar', class: 'h-14 shrink-0 border-b border-surface-3/60 flex items-center justify-between gap-2 px-3 bg-surface-0 overflow-x-auto' }),
       h('div', { id: 'tabbar', class: 'h-9 shrink-0 border-b border-surface-3/60 flex overflow-x-auto bg-surface-1' }),
       h('main', { id: 'workspace', class: 'flex-1 relative overflow-hidden bg-surface-1' }),
     ]),
