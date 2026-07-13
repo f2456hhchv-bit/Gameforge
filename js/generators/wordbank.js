@@ -238,6 +238,11 @@ export const AUDIO_TYPES = [
   { key: 'ambience', label: 'Ambience' },
   { key: 'voice', label: 'Voice Direction' },
   { key: 'ui-sound', label: 'UI Sound' },
+  { key: 'stinger', label: 'Stinger' },
+  { key: 'jingle', label: 'Jingle / Fanfare' },
+  { key: 'boss-theme', label: 'Boss Theme' },
+  { key: 'cutscene-score', label: 'Cutscene Score' },
+  { key: 'ambient-voice-bed', label: 'Crowd / Ambient Voice Bed' },
 ];
 
 export const MOODS = ['Tense', 'Triumphant', 'Melancholic', 'Whimsical', 'Foreboding', 'Serene', 'Chaotic', 'Nostalgic', 'Heroic', 'Eerie',
