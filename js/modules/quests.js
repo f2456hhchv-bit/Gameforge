@@ -65,7 +65,7 @@ function generateQuest(rng, subtype) {
 
 let chainState = { theme: null, chainStart: 0 };
 
-function generateQuestChainEntry({ index, subtype, existing }) {
+export function generateQuestChainEntry({ index, subtype, existing }) {
   const rng = rngFor(Math.random());
   if (index === 0 || index - chainState.chainStart >= chainState.theme.beats.length) {
     chainState.theme = pick(QUEST_CHAIN_THEMES, rng);

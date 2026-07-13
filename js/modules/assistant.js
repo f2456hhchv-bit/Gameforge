@@ -11,15 +11,16 @@ import { rngFor, generateBiomeLore, statBlockForLevel } from '../generators/proc
 import { BIOME_TYPES } from '../generators/wordbank.js';
 import { autoTask } from '../taskHooks.js';
 
-import { generatePlace, generateFaction } from './world.js';
-import { generateCharacter } from './characters.js';
-import { generateItem } from './items.js';
+import { generatePlace, generateFaction, generateContinent } from './world.js';
+import { generateCharacter, generateFactionRosterMember, generateGauntletBoss } from './characters.js';
+import { generateItem, generateLegendarySetItem, generateStarterLoadoutItem } from './items.js';
 import { generateLevel } from './levels.js';
 import { generateAbility } from './combat.js';
 import { generatePrompt } from './art.js';
 import { generateScreen, SUBTYPES as UI_SUBTYPES } from './uiDesigner.js';
 import { generateAudio } from './audio.js';
-import { generateQuest } from './quests.js';
+import { generateQuest, generateQuestChainEntry } from './quests.js';
+import { runProjectAudit } from '../audit.js';
 
 // Ordered most-specific-first so e.g. "weapon" matches before generic "item".
 // `taskFor` mirrors the onCreate hook each module's own UI wires into
@@ -54,10 +55,17 @@ const CONTENT_TYPES = [
   { keywords: ['art prompt', 'concept art'], collection: 'artPrompts', subtype: 'concept', generate: (rng) => generatePrompt(rng, 'concept') },
 ];
 
-function extractCount(text) {
+function extractCount(text, def = 1) {
   const m = text.match(/\b(\d{1,3})\b/);
-  if (!m) return 1;
+  if (!m) return def;
   return Math.max(1, Math.min(200, parseInt(m[1], 10)));
+}
+
+function formatAudit() {
+  const { findings, summary } = runProjectAudit();
+  if (!findings.length) return `Audit complete: ${summary}`;
+  const lines = findings.map(f => `${f.severity === 'warning' ? '⚠️' : 'ℹ️'} ${f.message}`);
+  return `Project audit — ${summary}:\n\n${lines.join('\n')}`;
 }
 
 function matchContentType(text) {
@@ -78,6 +86,24 @@ function runBulkGenerate(ct, count) {
   }
   store.commit(`Assistant: generate ${count} ${COLLECTIONS[ct.collection].label}`);
   store.logActivity(`Assistant generated ${count} ${COLLECTIONS[ct.collection].label.toLowerCase()}`, { icon: '🤖' });
+  return created;
+}
+
+// For the multi-entity generator variants (Legendary Set, Faction Roster,
+// Boss Gauntlet, Quest Chain, ...) — these read `index`/`existing` to build
+// batches of thematically-linked entities, mirroring collectionView.js's
+// runGenerator rather than the one-shot `generate(rng)` shape above.
+function runBulkGenerateVariant(collection, label, variantFn, count, subtypeKey) {
+  store.snapshot();
+  const created = [];
+  for (let i = 0; i < count; i++) {
+    const partial = variantFn({ index: i, subtype: subtypeKey, existing: store.list(collection) }) || {};
+    const item = { id: uid(collection), tags: [], links: {}, description: '', ...partial, subtype: partial.subtype || subtypeKey, createdAt: nowISO(), updatedAt: nowISO() };
+    store.project.collections[collection].push(item);
+    created.push(item);
+  }
+  store.commit(`Assistant: ${label}`);
+  store.logActivity(`Assistant generated a ${label.toLowerCase()} (${count} ${COLLECTIONS[collection].label.toLowerCase()})`, { icon: '🤖' });
   return created;
 }
 
@@ -137,8 +163,13 @@ const HELP_TEXT = `I'm a local command assistant — everything I do runs entire
 • "balance these enemies" (rescales enemy/boss stat blocks by level)
 • "improve progression" (updates the Difficulty doc + adds a task)
 • "rewrite the lore" (regenerates lore for every world entry)
+• "audit the project" / "what's missing" (finds unlinked entities, missing rewards, empty descriptions and untouched design docs)
+• "generate a legendary set" (matched weapon+armor+accessory) / "generate a starter loadout"
+• "generate a faction roster" (leader + themed members) / "generate a boss gauntlet" (escalating difficulty sequence)
+• "generate a continent" (large, multi-biome world entry)
+• "generate a quest chain" (a linked multi-stage story arc)
 
-I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues and art prompts.`;
+I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues and art prompts — plus the themed multi-entity variants above.`;
 
 function handleCommand(text) {
   const lower = text.toLowerCase().trim();
@@ -157,6 +188,38 @@ function handleCommand(text) {
   if (/\blore\b/.test(lower) && /(rewrite|improve|update|regenerate)/.test(lower)) {
     const { updated } = rewriteLore();
     return `Rewrote lore for ${updated.length} world ${updated.length === 1 ? 'entry' : 'entries'}: ${updated.map(b => b.name).join(', ')}. Open World Builder to fine-tune.`;
+  }
+  if (/\baudit\b/.test(lower) || /what'?s missing/.test(lower) || /\bgaps?\b/.test(lower)) {
+    return formatAudit();
+  }
+  if (/legendary set|matched set/.test(lower)) {
+    const count = extractCount(lower, 3);
+    const created = runBulkGenerateVariant('items', 'Legendary Set', generateLegendarySetItem, count);
+    return `Created a legendary set of ${created.length} matched items: ${created.map(c => c.name).join(', ')}. Open Item Studio to review.`;
+  }
+  if (/starter loadout/.test(lower)) {
+    const count = extractCount(lower, 4);
+    const created = runBulkGenerateVariant('items', 'Starter Loadout', generateStarterLoadoutItem, count);
+    return `Created a starter loadout of ${created.length} items: ${created.map(c => c.name).join(', ')}. Open Item Studio to review.`;
+  }
+  if (/faction roster/.test(lower)) {
+    const count = extractCount(lower, 6);
+    const created = runBulkGenerateVariant('characters', 'Faction Roster', generateFactionRosterMember, count);
+    return `Created a faction roster of ${created.length}: ${created.map(c => c.name).join(', ')}. Open Character Studio to review.`;
+  }
+  if (/boss gauntlet/.test(lower)) {
+    const count = extractCount(lower, 5);
+    const created = runBulkGenerateVariant('characters', 'Boss Gauntlet', generateGauntletBoss, count);
+    return `Created a boss gauntlet of ${created.length} escalating bosses: ${created.map(c => c.name).join(', ')}. Open Character Studio to review.`;
+  }
+  if (/\bcontinent\b/.test(lower)) {
+    const created = runBulkGenerate({ collection: 'biomes', subtype: 'region', generate: (rng) => generateContinent(rng, 'region'), taskFor: (i) => ({ category: 'design', estimateHours: 6, title: `Build out: ${i.name}` }) }, 1);
+    return `Created a new continent: ${created[0].name}. Open World Builder to review.`;
+  }
+  if (/quest chain/.test(lower)) {
+    const count = extractCount(lower, 5);
+    const created = runBulkGenerateVariant('quests', 'Quest Chain', generateQuestChainEntry, count, 'main');
+    return `Created a ${created.length}-stage quest chain: ${created.map(c => c.name).join(' → ')}. Open Quest Designer to review.`;
   }
   if (/\b(generate|create|add|make)\b/.test(lower)) {
     const ct = matchContentType(lower);

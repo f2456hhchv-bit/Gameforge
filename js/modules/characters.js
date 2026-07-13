@@ -75,7 +75,7 @@ export function generateCharacter(rng, subtype) {
 
 let factionRosterState = { name: '', size: 6 };
 
-function generateFactionRosterMember({ index }) {
+export function generateFactionRosterMember({ index }) {
   const rng = rngFor(Math.random());
   if (index % factionRosterState.size === 0) {
     factionRosterState.name = generateFactionName(rng);
@@ -91,7 +91,7 @@ function generateFactionRosterMember({ index }) {
   return char;
 }
 
-function generateGauntletBoss({ index }) {
+export function generateGauntletBoss({ index }) {
   const rng = rngFor(Math.random());
   const tier = index + 1;
   const char = generateCharacter(rng, 'boss');

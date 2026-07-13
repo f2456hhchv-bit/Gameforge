@@ -54,4 +54,48 @@ test.describe('AI Assistant (local command parser)', () => {
     const reply = await page.evaluate(() => window.__gfStore.project.collections.assistantLog.at(-1).text);
     expect(reply).toContain('local command assistant');
   });
+
+  test('audits an empty-ish project and reports gaps', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Assistant Audit Test');
+    await page.getByRole('button', { name: '🤖 Assistant' }).click();
+    await page.waitForTimeout(200);
+    await ask(page, 'generate 2 quests');
+    await ask(page, 'audit the project');
+    const reply = await page.evaluate(() => window.__gfStore.project.collections.assistantLog.at(-1).text);
+    expect(reply).toContain('audit');
+    expect(reply).toMatch(/quest giver|rewards/);
+    expect(errors).toEqual([]);
+  });
+
+  test('generates the new multi-entity variants: legendary set, faction roster, boss gauntlet, continent, quest chain', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Assistant Variants Test');
+    await page.getByRole('button', { name: '🤖 Assistant' }).click();
+    await page.waitForTimeout(200);
+
+    await ask(page, 'generate a legendary set');
+    await ask(page, 'generate a faction roster');
+    await ask(page, 'generate a boss gauntlet');
+    await ask(page, 'generate a continent');
+    await ask(page, 'generate a quest chain');
+
+    const state = await page.evaluate(() => {
+      const p = window.__gfStore.project;
+      return {
+        items: p.collections.items,
+        characters: p.collections.characters,
+        biomes: p.collections.biomes,
+        quests: p.collections.quests,
+      };
+    });
+    expect(state.items.length).toBe(3);
+    expect(new Set(state.items.map(i => i.subtype)).size).toBe(3);
+    expect(state.characters.filter(c => c.subtype === 'npc').length).toBe(6);
+    expect(state.characters.filter(c => c.subtype === 'boss').length).toBe(5);
+    expect(state.biomes.length).toBe(1);
+    expect(state.quests.length).toBe(5);
+    expect(state.quests[1].prerequisiteQuests[0]).toBe(state.quests[0].id);
+    expect(errors).toEqual([]);
+  });
 });

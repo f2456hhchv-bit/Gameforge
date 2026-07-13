@@ -93,7 +93,7 @@ export function generateItem(rng, subtype) {
 const LEGENDARY_SET_SLOTS = ['weapon', 'armor', 'accessory'];
 let legendarySetState = { setName: '' };
 
-function generateLegendarySetItem({ index }) {
+export function generateLegendarySetItem({ index }) {
   const rng = rngFor(Math.random());
   if (index % LEGENDARY_SET_SLOTS.length === 0) {
     legendarySetState.setName = `Set ${pick(LEGENDARY_TITLES, rng)}`;
@@ -109,7 +109,7 @@ function generateLegendarySetItem({ index }) {
 
 const STARTER_LOADOUT_SLOTS = ['weapon', 'armor', 'consumable', 'currency'];
 
-function generateStarterLoadoutItem({ index }) {
+export function generateStarterLoadoutItem({ index }) {
   const rng = rngFor(Math.random());
   const slot = STARTER_LOADOUT_SLOTS[index % STARTER_LOADOUT_SLOTS.length];
   const item = generateItem(rng, slot);
