@@ -1,9 +1,13 @@
 import { h, timeAgo, fmtDate, uid } from '../util.js';
 import { store } from '../store.js';
-import { COLLECTIONS, PLATFORMS, ENGINES, TASK_STATUSES } from '../schema.js';
+import { COLLECTIONS, PLATFORMS, ENGINES, TASK_STATUSES, RARITIES } from '../schema.js';
 import { openModal, closeTopModal, toast } from '../components/ui.js';
 import { openEntity } from '../router.js';
 import { barChart, areaSparkline } from '../components/charts.js';
+import { runProjectAudit } from '../audit.js';
+import { SUBTYPES as ITEM_SUBTYPES } from './items.js';
+import { SUBTYPES as CHARACTER_SUBTYPES } from './characters.js';
+import { SUBTYPES as QUEST_SUBTYPES } from './quests.js';
 
 const TASK_CATEGORIES = ['design', 'art', 'code', 'audio', 'writing', 'qa', 'general'];
 const STATUS_LABELS = { backlog: 'Backlog', todo: 'To Do', 'in-progress': 'In Progress', review: 'Review', done: 'Done' };
@@ -30,6 +34,14 @@ function contentGrowthSeries(project, days = 14) {
     }
   }
   return buckets;
+}
+
+function distributionOf(list, subtypes) {
+  return subtypes.map(s => ({ label: s.label, value: list.filter(i => i.subtype === s.key).length }));
+}
+
+function rarityDistribution(items) {
+  return RARITIES.map(r => ({ label: r, value: items.filter(i => i.rarity === r).length }));
 }
 
 function pct(done, total) {
@@ -202,6 +214,39 @@ export function mountDashboard(container) {
       areaSparkline(growth, { emptyText: 'Generate some characters, items or biomes to see activity here.' }),
     ]);
 
+    const distributionPanel = h('div', { class: 'card p-5 flex flex-col gap-4' }, [
+      h('h3', { class: 'font-semibold' }, 'Content Distribution'),
+      h('div', { class: 'grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4' }, [
+        h('div', { class: 'flex flex-col gap-2' }, [h('p', { class: 'text-xs font-medium text-slate-500 dark:text-slate-400' }, 'Items by Type'), barChart(distributionOf(store.list('items'), ITEM_SUBTYPES), { emptyText: 'No items yet.' })]),
+        h('div', { class: 'flex flex-col gap-2' }, [h('p', { class: 'text-xs font-medium text-slate-500 dark:text-slate-400' }, 'Items by Rarity'), barChart(rarityDistribution(store.list('items')), { emptyText: 'No items yet.' })]),
+        h('div', { class: 'flex flex-col gap-2' }, [h('p', { class: 'text-xs font-medium text-slate-500 dark:text-slate-400' }, 'Characters by Type'), barChart(distributionOf(store.list('characters'), CHARACTER_SUBTYPES), { emptyText: 'No characters yet.' })]),
+        h('div', { class: 'flex flex-col gap-2' }, [h('p', { class: 'text-xs font-medium text-slate-500 dark:text-slate-400' }, 'Quests by Type'), barChart(distributionOf(store.list('quests'), QUEST_SUBTYPES), { emptyText: 'No quests yet.' })]),
+      ]),
+    ]);
+
+    const audit = runProjectAudit();
+    const auditPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
+      h('div', { class: 'flex items-center justify-between' }, [
+        h('h3', { class: 'font-semibold' }, 'Project Audit'),
+        h('span', { class: 'text-xs text-slate-400' }, audit.summary),
+      ]),
+      audit.findings.length
+        ? h('div', { class: 'flex flex-col gap-3' }, audit.findings.map(f => h('div', { class: 'flex items-start gap-2 text-sm' }, [
+          h('span', { class: 'shrink-0' }, f.severity === 'warning' ? '⚠️' : 'ℹ️'),
+          h('div', { class: 'flex-1 min-w-0' }, [
+            h('p', {}, f.message),
+            f.refs.length ? h('div', { class: 'flex flex-wrap gap-1 mt-1.5' }, [
+              ...f.refs.slice(0, 8).map(r => h('button', {
+                class: 'badge badge-gray hover:opacity-70 transition-opacity cursor-pointer',
+                onclick: () => openEntity(r.collection, r.id),
+              }, r.name || 'Untitled')),
+              f.refs.length > 8 && h('span', { class: 'text-xs text-slate-400 self-center' }, `+${f.refs.length - 8} more`),
+            ].filter(Boolean)) : null,
+          ].filter(Boolean)),
+        ])))
+        : h('p', { class: 'text-sm text-slate-400' }, 'No gaps found — everything checked looks linked and filled in. Nice work!'),
+    ]);
+
     const milestones = project.collections.milestones;
     const milestonesPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
       h('div', { class: 'flex items-center justify-between' }, [
@@ -239,8 +284,8 @@ export function mountDashboard(container) {
     ]);
 
     const grid = h('div', { class: 'grid grid-cols-1 lg:grid-cols-3 gap-4 p-5' }, [
-      h('div', { class: 'lg:col-span-2 flex flex-col gap-4' }, [progressPanel, growthPanel, taskChartPanel, activityPanel]),
-      h('div', { class: 'flex flex-col gap-4' }, [milestonesPanel, quickLinks]),
+      h('div', { class: 'lg:col-span-2 flex flex-col gap-4' }, [progressPanel, distributionPanel, growthPanel, taskChartPanel, activityPanel]),
+      h('div', { class: 'flex flex-col gap-4' }, [auditPanel, milestonesPanel, quickLinks]),
     ]);
 
     container.append(header, overviewGrid, grid);
