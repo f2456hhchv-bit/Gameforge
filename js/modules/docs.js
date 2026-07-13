@@ -245,6 +245,23 @@ ${section('Action Items for Next Milestone', '_Fill in during the retro._')}
 `;
 }
 
+function genLiveOpsPlan(project) {
+  const monetization = findDesignDoc('monetization');
+  const economy = findDesignDoc('economy');
+  const repeatableQuests = list('quests').filter(q => q.subtype === 'repeatable' || q.subtype === 'world-event');
+  const achievements = list('achievements');
+  return `# ${project.name} — Live Ops / Content Roadmap
+
+*A forward-looking plan for what ships after launch — repeatable content, seasonal cadence, and how it ties back to the monetisation model.*
+
+${section('Monetisation Model', monetization ? `**${monetization.model || ''}** ${monetization.pricePoint ? `(${monetization.pricePoint})` : ''}\n\n${monetization.ethicalNotes || ''}` : null)}
+${section('Repeatable & World-Event Content (the live-ops backbone)', repeatableQuests.length ? repeatableQuests.map(q => `- **${q.name}** (${q.repeatable || q.subtype})`).join('\n') : '_No repeatable/world-event quests yet — add some in Quest Designer to give live ops something to run on a cadence._')}
+${section('Achievement / Trophy Cadence', achievements.length ? `${achievements.length} achievement(s) defined across ${new Set(achievements.map(a => a.subtype)).size} tier(s) — consider spacing hidden/rare ones across post-launch content drops rather than shipping them all on day one.` : '_No achievements yet — see the Achievements module._')}
+${section('Economy Health Check', economy ? `Total item value in circulation: ${economy.totalItemValue?.toLocaleString?.() ?? economy.totalItemValue}. ${(economy.sinks || []).length ? 'Sinks: ' + economy.sinks.join('; ') : 'No sinks defined yet — live ops content should introduce new sinks to prevent inflation.'}` : '_Generate an Economy Report in Game Designer first for a data-driven starting point._')}
+${section('Suggested Season Cadence', '- **Pre-launch**: final QA pass, day-one patch notes ready.\n- **Month 1**: first balance patch based on live economy data.\n- **Month 2-3**: first seasonal content drop (new repeatable quests, 1-2 achievements, a fresh cosmetic set).\n- **Ongoing**: quarterly seasonal beats thereafter, each documented as a fresh entry here.')}
+`;
+}
+
 function genResearchBrief(project) {
   const relevantGaps = GENRE_GAPS.filter(g => (project.meta.genre || '') && g.combo.some(c => (project.meta.genre || '').toLowerCase().includes(c.toLowerCase().split(' ')[0])));
   const highlighted = relevantGaps.length ? relevantGaps : GENRE_GAPS.slice(0, 5);
@@ -284,6 +301,7 @@ const DOC_TYPES = [
   { key: 'accessibility-statement', label: 'Accessibility Statement', icon: '♿', gen: genAccessibilityStatement },
   { key: 'post-mortem', label: 'Post-Mortem / Retrospective', icon: '🔁', gen: genPostMortem },
   { key: 'research-brief', label: 'Industry Research Brief', icon: '🔬', gen: genResearchBrief },
+  { key: 'live-ops-plan', label: 'Live Ops / Content Roadmap', icon: '🗓️', gen: genLiveOpsPlan },
 ];
 
 function compileMasterDocument(project) {
