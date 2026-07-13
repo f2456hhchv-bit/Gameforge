@@ -55,6 +55,21 @@ test.describe('Starter templates', () => {
     expect(errors).toEqual([]);
   });
 
+  test('all 6 research-backed hybrid templates seed without errors', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    const labels = [
+      'Cozy Extraction', 'Grand Tactics', 'Narrative Roguelite',
+      'Deckbuilder Explorer', 'Branching Asymmetric Horror', 'Co-op Soulslike',
+    ];
+    for (const label of labels) {
+      await createProject(page, `${label} Test`, label);
+      const state = await projectState(page);
+      expect(state.counts.designDocs, `${label}: designDocs`).toBeGreaterThan(0);
+      expect(state.counts.quests, `${label}: quests`).toBeGreaterThan(0);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('Blank Project starts empty and records no undo step', async ({ page }) => {
     await createProject(page, 'Blank Template Test', 'Blank Project');
     const state = await projectState(page);

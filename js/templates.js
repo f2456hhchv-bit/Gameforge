@@ -16,6 +16,9 @@ import {
   HORROR_THREATS, PUZZLE_MECHANICS, TOWER_DEFENSE_ENEMY_WAVES, ROGUELIKE_RUN_MODIFIERS,
   CARD_KEYWORDS, STRATEGY_RESOURCE_TYPES, FARMING_CROPS, BATTLE_ROYALE_ZONES, VISUAL_NOVEL_ARCS,
 } from './generators/wordbank.js';
+import { GENRE_GAPS } from './generators/genreResearch.js';
+
+const gap = (name) => GENRE_GAPS.find(g => g.name === name);
 
 const TASK_DEFAULTS = {
   characters: { category: 'art', estimateHours: 5, title: (i) => `Model, rig & animate: ${i.name}` },
@@ -517,6 +520,219 @@ export const TEMPLATES = [
       level.objectives = ['Be the last survivor standing as the zone closes'];
 
       store.logActivity('Seeded project from the Battle Royale starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'cozy-extraction', label: 'Cozy Extraction', icon: '🧺',
+    description: 'A researched-gap hybrid: extraction-shooter greed-vs-safety tension, minus the violence — risk your basket, not a rifle.',
+    meta: { genre: 'Cozy Extraction', platform: ['PC', 'Nintendo Switch', 'Mobile (iOS)'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('cozy-extraction-' + Date.now());
+      const g = gap('Cozy Extraction');
+      seedPillar('Every trip is a choice, not a fight', g.rationale);
+      seedPillar('Getting home is the real objective', 'The forage grounds only get more rewarding — and riskier to leave — the deeper you go; there is no combat, only the decision to turn back.');
+      seedCoreLoop(['Gather', 'Assess the Risk', 'Extract or Push Deeper', 'Return Home', 'Process & Sell the Haul'], 'Each trip banks a full basket only if you make it home; pushing one zone deeper roughly doubles the haul and the chance of losing it all.', 12);
+      seedUSP(`A cozy game with a genuine extraction-shooter tension loop: ${g.rationale}`, ['No combat — the only threat is losing what you\'re carrying', 'A "just one more zone" risk curve borrowed straight from extraction shooters']);
+      seedDifficulty(['Relaxed (never lose your basket)', 'Standard'], 'Relaxed mode removes the loss-on-failure entirely, for players who just want the gathering loop.');
+
+      const groundsNear = seedPlace(rng, 'region');
+      const groundsFar = seedPlace(rng, 'region');
+      const home = seedPlace(rng, 'city');
+
+      seedCharacter(rng, 'player', { name: 'The Forager' });
+      const rival = seedCharacter(rng, 'npc', { description: 'A rival forager who trades tips on the deepest, riskiest zones.' });
+      rival.links.spawnBiome = home.id;
+
+      Array.from({ length: 4 }, () => seedItem(rng, 'material'));
+      seedItem(rng, 'currency');
+      const rareGood = seedItem(rng, 'quest-item');
+
+      const mainQuest = seedQuest(rng, 'main', { name: 'The Deepest Basket' });
+      mainQuest.links.giver = rival.id;
+      mainQuest.links.location = groundsFar.id;
+      mainQuest.rewards = [rareGood.id];
+      mainQuest.description = 'Reach the deepest forage zone and make it home with a full basket — without losing everything to the one setback that would cost you the whole trip.';
+
+      seedQuest(rng, 'repeatable', { name: 'Daily Forage Run' }).links.location = groundsNear.id;
+
+      store.logActivity('Seeded project from the Cozy Extraction starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'grand-tactics', label: 'Grand Tactics', icon: '🏰',
+    description: 'A researched-gap hybrid: full 4X empire strategy where named heroes are fought directly by the player in real-time duels, not an abstracted battle screen.',
+    meta: { genre: 'Grand Tactics', platform: ['PC'], engine: 'Custom' },
+    apply: () => {
+      const rng = rngFor('grand-tactics-' + Date.now());
+      const g = gap('Grand Tactics');
+      const resources = pickN(STRATEGY_RESOURCE_TYPES, 3, rng);
+      seedPillar('The empire and the duel share one set of stakes', g.rationale);
+      seedPillar('Every hero fought is an empire decision', `Losing a duel costs the empire real ${resources.join('/')} — there is no safety net between the strategy layer and the action layer.`);
+      seedCoreLoop(['Command the Empire', 'Deploy a Hero', 'Fight a Real-Time Duel', 'Annex Territory on Victory', 'Reinforce and Expand'], 'Every 4X turn cycle can trigger a hero duel; winning expands territory, losing costs resources and morale.', 20);
+      seedUSP(`A 4X strategy game with skill-based hero combat fought directly by the player: ${g.rationale}`, ['No abstracted "auto-resolve" combat — every hero duel is played, not calculated', 'Empire resource yields and hero build strength are the same economy']);
+      seedDifficulty(['Strategist (auto-resolve duels available)', 'Champion (all duels must be played)'], 'Champion mode disables auto-resolve — every duel is fought by hand.');
+
+      const homeland = seedPlace(rng, 'region');
+      const contested = seed('biomes', generateContinent(rng, 'region'), { subtype: 'region' });
+      const rivalFaction = seedFaction(rng);
+
+      seedCharacter(rng, 'player', { name: 'The Champion' });
+      const rivalHero = seedCharacter(rng, 'boss', { name: `${rivalFaction.name} Champion` });
+      rivalHero.links.spawnBiome = contested.id;
+
+      const weapons = Array.from({ length: 2 }, () => seedItem(rng, 'weapon'));
+      resources.forEach(() => seedItem(rng, 'currency'));
+      rivalHero.links.drops = [weapons[0].id];
+
+      seedQuest(rng, 'faction', { name: `The Struggle for ${contested.name}` }).links.location = contested.id;
+
+      const arena = seedLevel(rng, { layoutType: 'Arena' });
+      arena.links = { biome: contested.id, enemies: [rivalHero.id], lootTable: weapons.map(w => w.id) };
+      arena.objectives = ['Defeat the rival champion in single combat to annex this territory'];
+
+      seedAbility(rng);
+      seedAbility(rng);
+      store.logActivity('Seeded project from the Grand Tactics starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'roguelite-visual-novel', label: 'Narrative Roguelite', icon: '📖',
+    description: 'A researched-gap hybrid: permadeath run structure applied to branching narrative — each run is a compressed story arc whose unlocks reshape the next run\'s reachable branches.',
+    meta: { genre: 'Roguelite Visual Novel', platform: ['PC', 'Mobile (iOS)'], engine: 'Ren\'Py' },
+    apply: () => {
+      const rng = rngFor('roguelite-visual-novel-' + Date.now());
+      const g = gap('Roguelite Visual Novel');
+      const arc = pick(VISUAL_NOVEL_ARCS, rng);
+      const modifiers = pickN(ROGUELIKE_RUN_MODIFIERS, 2, rng);
+      seedPillar('Every run is one full, compressed story', g.rationale);
+      seedPillar('Dying (or failing) is a valid ending, not a loss screen', `A run that ends badly still unlocks new dialogue options and character knowledge for the next run — modeled loosely on run modifiers like "${modifiers[0]}".`);
+      seedCoreLoop(['Begin a New Run', 'Make Choices Under Time Pressure', 'Reach an Ending', 'Bank Meta-Progress (memories, relationships)', 'Begin Again With New Options'], 'A new dialogue branch, character truth, or relationship option unlocks after nearly every run, regardless of ending quality.', 15);
+      seedUSP(`A visual novel with genuine roguelite run structure: ${g.rationale}`, [`Central arc: ${arc}`, 'No single "true" playthrough — meta-progression is entirely about unlocking more of the story, not getting stronger']);
+      seedDifficulty(['Standard', 'No Memory Carryover (one true run only)'], 'No Memory Carryover disables meta-progression for a single, high-stakes linear playthrough.');
+
+      const setting = seedPlace(rng, 'city');
+      seedCharacter(rng, 'player', { name: 'The Wanderer' });
+      const cast = Array.from({ length: 3 }, () => seedCharacter(rng, 'npc'));
+      cast.forEach(c => { c.links.spawnBiome = setting.id; });
+
+      const keepsake = seedItem(rng, 'quest-item');
+
+      const mainQuest = seedQuest(rng, 'main', { name: arc.slice(0, 40) });
+      mainQuest.description = arc;
+      mainQuest.links.giver = cast[0].id;
+      mainQuest.links.location = setting.id;
+      mainQuest.rewards = [keepsake.id];
+      mainQuest.branching = `Each run replays this arc from a new angle; failure states unlock rather than block content. Run modifiers in rotation: ${modifiers.join(', ')}.`;
+
+      store.logActivity('Seeded project from the Roguelite Visual Novel starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'deckbuilder-explorer', label: 'Deckbuilder Explorer', icon: '🗺️',
+    description: 'A researched-gap hybrid: cards as traversal and environmental-puzzle tools across a full open world, not just a combat-encounter resource.',
+    meta: { genre: 'Deckbuilder Explorer', platform: ['PC', 'Nintendo Switch'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('deckbuilder-explorer-' + Date.now());
+      const g = gap('Deckbuilder Explorer');
+      const keywords = pickN(CARD_KEYWORDS, 3, rng);
+      seedPillar('Cards move you, not just your damage number', g.rationale);
+      seedPillar('The whole world is a deckbuilding puzzle', `A ${keywords[0]} card might cross a chasm in one region and stagger a boss in another — the same card, read differently by the terrain.`);
+      seedCoreLoop(['Explore the Open World', 'Draw Cards for Traversal or Combat', 'Discover a New Card/Region', 'Expand the Deck', 'Push Into a Harder Region'], 'A new traversal-capable card or open region unlocks roughly every hour of exploration.', 15);
+      seedUSP(`A deckbuilder where the deck is the map key: ${g.rationale}`, [`Signature keywords: ${keywords.join(', ')}`, 'No separate "combat mode" — cards are drawn identically whether crossing terrain or fighting']);
+      seedDifficulty(['Standard', 'Thin Deck (fewer cards, harder choices)'], 'Thin Deck mode starts with half the usual starting deck size.');
+
+      const overworld = seedPlace(rng, 'region');
+      const frontier = generateContinent(rng, 'region');
+      const frontierEntry = seed('biomes', frontier, { subtype: 'region' });
+
+      const guardian = seedCharacter(rng, 'boss', { description: 'Guards the path into the frontier; its attacks telegraph which card type answers them best.' });
+      guardian.links.spawnBiome = frontierEntry.id;
+      const enemy = seedCharacter(rng, 'enemy');
+      enemy.links.spawnBiome = overworld.id;
+
+      const cards = Array.from({ length: 4 }, () => {
+        const card = seedItem(rng, 'quest-item');
+        card.affixes = [pick(keywords, rng)];
+        card.description = `A playable card usable for traversal or combat. Keyword: ${card.affixes[0]}.`;
+        return card;
+      });
+      seedItem(rng, 'currency');
+      guardian.links.drops = [cards[0].id];
+
+      seedQuest(rng, 'main', { name: 'Beyond the Guarded Pass' }).links.location = frontierEntry.id;
+
+      const level = seedLevel(rng, { layoutType: 'Open World' });
+      level.links = { biome: overworld.id, enemies: [enemy.id], lootTable: cards.map(c => c.id) };
+
+      store.logActivity('Seeded project from the Deckbuilder Explorer starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'branching-asymmetric-horror', label: 'Branching Asymmetric Horror', icon: '🔪',
+    description: 'A researched-gap hybrid: one-vs-many asymmetric horror chases whose outcomes persist as branching narrative consequences across sessions, not just per-match stats.',
+    meta: { genre: 'Branching Asymmetric Horror', platform: ['PC', 'PlayStation', 'Xbox'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('branching-asymmetric-horror-' + Date.now());
+      const g = gap('Branching Asymmetric Horror');
+      const threat = pick(HORROR_THREATS, rng);
+      seedPillar('The chase is one session; the story is many', g.rationale);
+      seedPillar('Every match writes the next one', `Whether the hunter — ${threat} — catches every survivor or none of them changes what NPCs say and what\'s possible next session, not just a scoreboard.`);
+      seedCoreLoop(['Choose Hunter or Survivor', 'Play the Chase Under Time Pressure', 'Session Resolves', 'Branching Consequence Locks In', 'Next Session Reflects It'], 'Persistent world-state branches after every match, not just cosmetic unlocks.', 8);
+      seedUSP(`An asymmetric horror game with Detective-style persistent branching consequences: ${g.rationale}`, [`The hunter is ${threat}`, 'Match outcomes are canon — they change future dialogue and map states, not just a rank number']);
+      seedDifficulty(['Standard', 'Permanent Consequences Off (casual/practice mode)'], 'Practice mode plays matches normally but never commits their outcome to the persistent story-state.');
+
+      const location = seedPlace(rng, 'city');
+      const hunter = seedCharacter(rng, 'boss', { name: 'The Hunter', description: `An entity that is ${threat}.` });
+      hunter.links.spawnBiome = location.id;
+      const survivors = Array.from({ length: 3 }, () => seedCharacter(rng, 'npc'));
+      survivors.forEach(s => { s.links.spawnBiome = location.id; });
+
+      seedItem(rng, 'consumable');
+      seedItem(rng, 'quest-item');
+
+      const mainQuest = seedQuest(rng, 'main', { name: 'What the Chase Decided' });
+      mainQuest.links.location = location.id;
+      mainQuest.branching = 'Which survivors lived, and how the hunt ended, is tracked as persistent world-state referenced in every subsequent match\'s dialogue and objectives.';
+
+      const level = seedLevel(rng, { layoutType: 'Arena' });
+      level.links = { biome: location.id, enemies: [hunter.id] };
+
+      store.logActivity('Seeded project from the Branching Asymmetric Horror starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'coop-soulslike', label: 'Co-op Soulslike', icon: '🗡️',
+    description: 'A researched-gap hybrid: genuinely punishing Soulslike combat balanced from the ground up for two-player co-op, not an easy-mode co-op game or a solo Souls game with summons bolted on.',
+    meta: { genre: 'Co-op Soulslike', platform: ['PC', 'PlayStation', 'Xbox'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('coop-soulslike-' + Date.now());
+      const g = gap('Co-op Soulslike');
+      seedPillar('Built for two from the ground up', g.rationale);
+      seedPillar('Death is shared, not solo', 'Both players\' dropped currency piles up at the death location together; recovering it requires surviving back there as a pair, not just one player\'s risk.');
+      seedCoreLoop(['Explore a Punishing Area Together', 'Die and Learn Its Patterns', 'Retrieve Shared Lost Currency', 'Defeat a Boss as a Duo', 'Unlock a Shortcut Back to the Hub'], 'Bonfire-style rest points respawn all non-boss enemies but are always co-located so neither player restocks alone.', 14);
+      seedUSP(`A Soulslike balanced for two, not one-plus-a-summon: ${g.rationale}`, ['Boss movesets are authored around two simultaneous targets, not tuned for solo and patched for co-op', 'Shared risk: both players\' currency is lost and recovered together']);
+      seedDifficulty(['Standard', 'Solo Viable (rebalanced for one)'], 'Solo Viable retunes boss aggression and health for a single player, since the base game assumes two.');
+
+      const dungeon = seedPlace(rng, 'region');
+      const enemies = Array.from({ length: 3 }, () => seedCharacter(rng, 'enemy'));
+      const boss = seedCharacter(rng, 'boss', { name: 'The Twinned Warden' });
+      enemies.forEach(e => { e.links.spawnBiome = dungeon.id; });
+      boss.links.spawnBiome = dungeon.id;
+      boss.description = 'A boss with two simultaneous attack patterns authored for exactly two players — never trivial to tank-and-spank.';
+
+      const weapons = Array.from({ length: 2 }, () => seedItem(rng, 'weapon'));
+      seedItem(rng, 'currency');
+      boss.links.drops = weapons.map(w => w.id);
+
+      seedQuest(rng, 'main', { name: 'The Twinned Warden\'s Vigil' }).links.location = dungeon.id;
+
+      const level = seedLevel(rng, { layoutType: 'Procedural Dungeon' });
+      level.links = { biome: dungeon.id, enemies: enemies.map(e => e.id), lootTable: weapons.map(w => w.id) };
+      level.checkpoints = ['Shared Bonfire — Entrance', 'Shared Bonfire — Midpoint', 'Pre-Boss (co-located)'];
+
+      seedAbility(rng);
+      seedAbility(rng);
+      store.logActivity('Seeded project from the Co-op Soulslike starter pack', { icon: '✨' });
     },
   },
 ];
