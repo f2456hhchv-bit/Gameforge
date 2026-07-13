@@ -2,6 +2,7 @@ import { h, uid, fmtDate, timeAgo } from '../util.js';
 import { store } from '../store.js';
 import { exportMarkdown, exportHTML, printToPDF, exportDOCX, markdownToHTML } from './exportManager.js';
 import { toast, openModal } from '../components/ui.js';
+import { GOTY_HISTORY, GENRE_SIGNATURES, GENRE_GAPS, BAFTA_DIVERGENT_WINNERS } from '../generators/genreResearch.js';
 
 function list(key) { return store.list(key); }
 function bulletList(items, empty = '_None yet._') {
@@ -187,6 +188,28 @@ ${section('Recent Changes', recentActivity.map(a => `- ${a.message} _(${timeAgo(
 `;
 }
 
+function genResearchBrief(project) {
+  const relevantGaps = GENRE_GAPS.filter(g => (project.meta.genre || '') && g.combo.some(c => (project.meta.genre || '').toLowerCase().includes(c.toLowerCase().split(' ')[0])));
+  const highlighted = relevantGaps.length ? relevantGaps : GENRE_GAPS.slice(0, 5);
+
+  return `# ${project.name} — Industry Research Brief
+
+*A grounded snapshot of 20 years of award-winning game design (2005–2025), compiled from The Game Awards, D.I.C.E. Awards, BAFTA, and Metacritic history — used here to spot untried territory, not to copy anyone's homework.*
+
+${section('20 Years of Game of the Year Winners', GOTY_HISTORY.map(g => `- **${g.year} — ${g.game}** _(${g.genre}, ${g.source})_: ${g.innovation}`).join('\n'))}
+
+${section('BAFTA\'s Divergent Picks (same years, different "best game")', `BAFTA's Best Game frequently disagrees with The Game Awards/D.I.C.E. in the same year — proof that more than one genre can be "the best game" of a given year depending on the lens applied:\n\n${BAFTA_DIVERGENT_WINNERS.map(g => `- **${g.year} — ${g.game}** _(${g.genre})_: ${g.innovation}`).join('\n')}`)}
+
+${section('Genre Mechanical Signatures', GENRE_SIGNATURES.map(g => `**${g.genre}** _(peak: ${g.peak})_ — examples: ${g.examples.join(', ')}.\n${g.signature}`).join('\n\n'))}
+
+${section(relevantGaps.length ? `Untried Combinations Relevant to This Project (${project.meta.genre})` : 'Untried Combinations Worth Exploring', highlighted.map(g => `**${g.name}** (${g.combo.join(' + ')}) — ${g.rationale}`).join('\n\n'))}
+
+${section('All Researched Gaps', GENRE_GAPS.map(g => `- **${g.name}** (${g.combo.join(' + ')})`).join('\n'))}
+
+*Use the Assistant's "suggest a genre mashup" command to seed a mini design brief from any of these combinations directly into this project.*
+`;
+}
+
 const DOC_TYPES = [
   { key: 'gdd', label: 'Game Design Document', icon: '📘', gen: genGDD },
   { key: 'tdd', label: 'Technical Design Document', icon: '🛠️', gen: genTDD },
@@ -200,6 +223,7 @@ const DOC_TYPES = [
   { key: 'qa-doc', label: 'QA Document', icon: '🧪', gen: genQADoc },
   { key: 'release-notes', label: 'Release Notes', icon: '🚀', gen: genReleaseNotes },
   { key: 'patch-notes', label: 'Patch Notes', icon: '🩹', gen: genPatchNotes },
+  { key: 'research-brief', label: 'Industry Research Brief', icon: '🔬', gen: genResearchBrief },
 ];
 
 function compileMasterDocument(project) {

@@ -27,4 +27,20 @@ test.describe('Master document compilation', () => {
     expect(fs.readFileSync(savePath, 'utf-8').length).toBeGreaterThan(500);
     expect(errors).toEqual([]);
   });
+
+  test('Industry Research Brief doc generates real GOTY history and gap analysis', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Research Brief Test');
+    await openModule(page, 'Documentation');
+    await page.locator('.rounded-lg', { hasText: 'Industry Research Brief' }).click();
+    await page.waitForTimeout(150);
+    await page.getByRole('button', { name: /Generate Now/ }).click();
+    await page.waitForTimeout(200);
+
+    const content = await page.evaluate(() => window.__gfStore.project.collections.docs.find(d => d.subtype === 'research-brief').content);
+    expect(content).toContain('Baldur\'s Gate 3');
+    expect(content).toContain('Elden Ring');
+    expect(content).toContain('Untried Combinations');
+    expect(errors).toEqual([]);
+  });
 });
