@@ -10,6 +10,8 @@ import { exportXLSXMultiSheet } from './modules/exportManager.js';
 import { runProjectAudit } from './audit.js';
 import { generateMashupBrief } from './mashup.js';
 
+const LIVE_SITE_URL = 'https://f2456hhchv-bit.github.io/Gameforge/';
+
 const root = document.getElementById('app');
 
 // ---------- Boot: pick or create a project ----------
@@ -204,12 +206,16 @@ function renderTopbar() {
   const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', 'aria-label': 'Search', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
   const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', 'aria-label': 'Project backup menu', onclick: openBackupMenu }, '⋮');
   const helpBtn = h('button', { class: 'btn-icon', title: 'Keyboard shortcuts (?)', 'aria-label': 'Keyboard shortcuts', onclick: openShortcutsModal }, '⌨');
+  const liveSiteLink = h('a', {
+    href: LIVE_SITE_URL, target: '_blank', rel: 'noopener noreferrer',
+    class: 'btn-icon', title: 'Open the live hosted site in a new tab', 'aria-label': 'Open live site',
+  }, '🔗');
   const assistantBtn = h('button', { class: 'btn-secondary text-sm', title: 'AI Assistant', onclick: toggleAssistant }, ['🤖 Assistant']);
 
   bar.append(
     h('div', { class: 'flex items-center gap-1' }, [projSwitch]),
     h('div', { class: 'flex-1 flex justify-center' }, [searchBtn]),
-    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, accentBtn, helpBtn, backupBtn, assistantBtn]),
+    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, accentBtn, liveSiteLink, helpBtn, backupBtn, assistantBtn]),
   );
 }
 
