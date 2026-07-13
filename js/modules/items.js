@@ -2,13 +2,15 @@ import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateWeaponName, weaponStats, rarityRoll } from '../generators/procedural.js';
 import { h, pick, pickN } from '../util.js';
 import { RARITIES, badgeForRarity } from '../schema.js';
-import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE, LEGENDARY_TITLES } from '../generators/wordbank.js';
+import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE, LEGENDARY_TITLES, MOUNT_TYPES } from '../generators/wordbank.js';
 import { autoTask } from '../taskHooks.js';
 import { openModal } from '../components/ui.js';
 import { barChart } from '../components/charts.js';
 
 const RARITY_TABLE_WEIGHTS = { Common: 45, Uncommon: 28, Rare: 16, Epic: 7, Legendary: 3, Mythic: 1 };
 const RARITY_TABLE_TOTAL = Object.values(RARITY_TABLE_WEIGHTS).reduce((a, b) => a + b, 0);
+const COSMETIC_ADJECTIVES = ['Radiant', 'Shadow', 'Gilded', 'Verdant', 'Crimson', 'Obsidian', 'Frostbound', 'Sunlit'];
+const VISUAL_SLOTS = ['Helmet', 'Chest', 'Weapon Skin', 'Mount Skin', 'Back/Cape', 'Emote', 'Full Outfit'];
 
 function openDropRateSimulator() {
   const state = { runs: 1000 };
@@ -50,6 +52,9 @@ export const SUBTYPES = [
   { key: 'material', label: 'Crafting Material', icon: '🪵' },
   { key: 'quest-item', label: 'Quest Item', icon: '📜' },
   { key: 'currency', label: 'Currency', icon: '🪙' },
+  { key: 'mount', label: 'Mount', icon: '🐴' },
+  { key: 'cosmetic', label: 'Cosmetic / Skin', icon: '🎭' },
+  { key: 'blueprint', label: 'Blueprint / Schematic', icon: '📐' },
 ];
 
 const FIELDS = [
@@ -61,6 +66,12 @@ const FIELDS = [
   { key: 'upgradeTree', label: 'Upgrade Tree', type: 'list', cols: 2, placeholder: 'e.g. Tier 2: +10% damage, requires 3 Iron Ore' },
   { key: 'craftedFrom', label: 'Crafted From', type: 'relation-multi', target: 'items', subtype: 'material' },
   { key: 'randomGenRule', label: 'Random Generation Rule', type: 'textarea', cols: 2, placeholder: 'Notes on how this template rolls stats/affixes procedurally…' },
+  { key: 'setName', label: 'Item Set', type: 'text', placeholder: 'e.g. Vanguard\'s Aegis (leave blank if not part of a set)' },
+  { key: 'setBonus', label: 'Set Bonus', type: 'textarea', placeholder: 'e.g. 2pc: +10% armour. 4pc: reflect 15% melee damage.' },
+  { key: 'socketSlots', label: 'Socket / Gem Slots', type: 'number', placeholder: 'e.g. 2' },
+  { key: 'durability', label: 'Durability', type: 'number', placeholder: 'e.g. 100' },
+  { key: 'unlocksRecipeFor', label: 'Unlocks Recipe For', type: 'relation', target: 'items' },
+  { key: 'visualSlot', label: 'Visual Slot', type: 'select', options: VISUAL_SLOTS },
 ];
 
 function badgeFor(item) {
@@ -73,7 +84,7 @@ function badgeFor(item) {
 
 const TYPE_NAME_BANK = {
   armor: ARMOR_PIECES, accessory: ACCESSORY_TYPES, consumable: CONSUMABLE_TYPES,
-  currency: CURRENCY_TYPES, 'quest-item': QUEST_ITEM_TYPES,
+  currency: CURRENCY_TYPES, 'quest-item': QUEST_ITEM_TYPES, mount: MOUNT_TYPES,
 };
 
 function genericStats(rng, subtype, rarity) {
@@ -96,6 +107,11 @@ function genericStats(rng, subtype, rarity) {
       return [{ key: 'Stack Size', value: String(Math.round(10 + rng() * 90)) }];
     case 'currency':
       return [{ key: 'Base Value', value: String(Math.round(1 + rng() * 100)) }];
+    case 'mount':
+      return [
+        { key: 'Speed Bonus', value: `+${Math.round((20 + rng() * 40) * mult)}%` },
+        { key: 'Stamina', value: String(Math.round((50 + rng() * 100) * mult)) },
+      ];
     default:
       return [];
   }
@@ -103,11 +119,19 @@ function genericStats(rng, subtype, rarity) {
 
 export function generateItem(rng, subtype) {
   const rarity = rarityRoll(rng);
-  let name, description;
+  let name, description, visualSlot = '';
   if (subtype === 'weapon') {
     const weaponType = pick(Object.keys(WEAPON_BASE), rng);
     name = generateWeaponName(rng, weaponType, rarity);
     description = `A ${rarity.toLowerCase()} ${weaponType} favored by those who survive.`;
+  } else if (subtype === 'cosmetic') {
+    visualSlot = pick(VISUAL_SLOTS, rng);
+    name = `${pick(COSMETIC_ADJECTIVES, rng)} ${visualSlot}`;
+    description = `A ${rarity.toLowerCase()} cosmetic — purely visual, no stat impact.`;
+  } else if (subtype === 'blueprint') {
+    const weaponType = pick(Object.keys(WEAPON_BASE), rng);
+    name = `Blueprint: ${weaponType}`;
+    description = `A ${rarity.toLowerCase()} schematic that unlocks a new crafting recipe once learned.`;
   } else {
     const bank = TYPE_NAME_BANK[subtype] || ['Item'];
     const base = pick(bank, rng);
@@ -116,13 +140,19 @@ export function generateItem(rng, subtype) {
     description = `A ${rarity.toLowerCase()} ${subtype.replace('-', ' ')}.`;
   }
   const stats = subtype === 'weapon' ? weaponStats(rng, rarity) : genericStats(rng, subtype, rarity);
-  const affixes = ['Rare', 'Epic', 'Legendary', 'Mythic'].includes(rarity) ? pickN(AFFIXES, rarity === 'Mythic' ? 2 : 1, rng) : [];
+  const affixes = subtype !== 'cosmetic' && subtype !== 'blueprint' && ['Rare', 'Epic', 'Legendary', 'Mythic'].includes(rarity) ? pickN(AFFIXES, rarity === 'Mythic' ? 2 : 1, rng) : [];
+  const isEquipment = ['weapon', 'armor'].includes(subtype);
   return {
     name, description, rarity,
     value: Math.round((5 + rng() * 500) * ({ Common: 1, Uncommon: 2, Rare: 5, Epic: 12, Legendary: 30, Mythic: 80 }[rarity] || 1)),
     statistics: stats,
     affixes, enchantments: [], upgradeTree: [], craftedFrom: [],
     randomGenRule: `Rolls rarity via weighted table, then scales stats by rarity multiplier (${rarity}).`,
+    setName: '', setBonus: '',
+    socketSlots: isEquipment ? Math.floor(rng() * 4) : 0,
+    durability: isEquipment ? Math.round(80 + rng() * 120) : 0,
+    unlocksRecipeFor: '',
+    visualSlot,
     links: {},
   };
 }
@@ -169,7 +199,7 @@ export function mountItems(container, opts) {
     key: 'items', singular: 'Item', plural: 'Items', icon: '🗡️',
     subtypes: SUBTYPES,
     fields: FIELDS,
-    makeDefaults: () => ({ rarity: 'Common', statistics: [], affixes: [], enchantments: [], upgradeTree: [], craftedFrom: [] }),
+    makeDefaults: () => ({ rarity: 'Common', statistics: [], affixes: [], enchantments: [], upgradeTree: [], craftedFrom: [], socketSlots: 0, durability: 0 }),
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
@@ -178,7 +208,7 @@ export function mountItems(container, opts) {
       category: 'art', estimateHours: 2, title: (i) => `Create icon/model art: ${i.name}`,
       description: `Art pass for ${item.subtype || 'item'} "${item.name}" (${item.rarity || 'Common'}).`,
     }),
-    helpText: 'Weapons, armour, accessories, consumables, crafting materials, quest items and currencies — rarity, stats and affixes are all fully editable.',
+    helpText: 'Weapons, armour, accessories, consumables, crafting materials, quest items, currencies, mounts, cosmetics/skins and blueprints/schematics — rarity, stats, affixes, item sets, sockets, durability and blueprint recipe unlocks are all fully editable.',
   });
   return view.mount(container, opts);
 }

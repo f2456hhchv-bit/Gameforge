@@ -1,7 +1,7 @@
 import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateCharacterName, generateCreatureName, statBlockForLevel, generateAbilityName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
-import { DAMAGE_TYPES, NPC_OCCUPATIONS, LEGENDARY_TITLES } from '../generators/wordbank.js';
+import { DAMAGE_TYPES, NPC_OCCUPATIONS, LEGENDARY_TITLES, PERSONALITY_TRAITS } from '../generators/wordbank.js';
 import { generateFactionName } from '../generators/procedural.js';
 import { autoTask } from '../taskHooks.js';
 
@@ -13,6 +13,7 @@ export const SUBTYPES = [
   { key: 'merchant', label: 'Merchant', icon: '🛒' },
   { key: 'companion', label: 'Companion', icon: '🐾' },
   { key: 'wildlife', label: 'Wildlife', icon: '🦌' },
+  { key: 'summon', label: 'Summon / Pet', icon: '✨' },
 ];
 
 const FIELDS = [
@@ -29,6 +30,10 @@ const FIELDS = [
   { key: 'animations', label: 'Animations', type: 'list', placeholder: 'e.g. Idle, Attack A, Death' },
   { key: 'voice', label: 'Voice Direction', type: 'text', placeholder: 'e.g. Gravelly, sparse dialogue' },
   { key: 'sound', label: 'Sound Cues', type: 'list', placeholder: 'e.g. Footsteps, roar' },
+  { key: 'personalityTraits', label: 'Personality Traits', type: 'list', placeholder: 'e.g. Stoic, Loyal, Quick-tempered' },
+  { key: 'dialogueBank', label: 'Sample Dialogue Lines', type: 'list', cols: 2, placeholder: 'e.g. "You again? Fine. Let\'s get this over with."' },
+  { key: 'factionAllegiance', label: 'Faction Allegiance', type: 'relation', target: 'biomes', subtype: 'faction' },
+  { key: 'relationshipNotes', label: 'Relationship Notes', type: 'textarea', cols: 2, placeholder: 'Ties to other characters — rivalries, family, mentorship…' },
   { key: 'drops', label: 'Drops (Loot)', type: 'relation-multi', target: 'items' },
   { key: 'spawnBiome', label: 'Spawn Location', type: 'relation', target: 'biomes' },
 ];
@@ -48,11 +53,13 @@ const BEHAVIOUR_BY_SUBTYPE = {
   companion: 'Follows the player; assists in combat; can be given simple commands.',
   wildlife: 'Flees from the player unless cornered or provoked.',
   player: 'Fully player-controlled; no autonomous behaviour.',
+  summon: 'Acts autonomously per simple AI rules for a limited duration or until dismissed; despawns on death (no loot).',
 };
 
 export function generateCharacter(rng, subtype) {
   const level = 1 + Math.floor(rng() * 20);
-  const isCombat = ['enemy', 'boss', 'wildlife'].includes(subtype);
+  const isCombat = ['enemy', 'boss', 'wildlife', 'summon'].includes(subtype);
+  const isSocial = ['npc', 'merchant', 'companion'].includes(subtype);
   const name = subtype === 'enemy' || subtype === 'boss' || subtype === 'wildlife' ? generateCreatureName(rng) : generateCharacterName(rng, subtype);
   return {
     name, level,
@@ -69,6 +76,9 @@ export function generateCharacter(rng, subtype) {
     animations: isCombat ? ['Idle', 'Move', 'Attack', 'Hit React', 'Death'] : ['Idle', 'Talk'],
     voice: '',
     sound: [],
+    personalityTraits: isSocial ? pickN(PERSONALITY_TRAITS, 2, rng) : [],
+    dialogueBank: [],
+    relationshipNotes: '',
     links: {},
   };
 }
@@ -115,7 +125,7 @@ export function mountCharacters(container, opts) {
     key: 'characters', singular: 'Character', plural: 'Characters', icon: '🧑‍🎤',
     subtypes: SUBTYPES,
     fields: FIELDS,
-    makeDefaults: (subtype) => ({ level: 1, statistics: [], abilities: [], weaknesses: [], variants: [], animations: [], sound: [] }),
+    makeDefaults: (subtype) => ({ level: 1, statistics: [], abilities: [], weaknesses: [], variants: [], animations: [], sound: [], personalityTraits: [], dialogueBank: [] }),
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
@@ -125,7 +135,7 @@ export function mountCharacters(container, opts) {
       title: (i) => `Model, rig & animate: ${i.name}`,
       description: `Art + animation pass for ${item.subtype || 'character'} "${item.name}".`,
     }),
-    helpText: 'Player characters, enemies, bosses, NPCs, merchants, companions and wildlife all live here — each fully statted and linkable to loot and biomes.',
+    helpText: 'Player characters, enemies, bosses, NPCs, merchants, companions, wildlife and summons/pets all live here — each fully statted and linkable to loot, biomes and faction allegiance, with personality traits, sample dialogue and relationship notes for social characters.',
   });
   return view.mount(container, opts);
 }

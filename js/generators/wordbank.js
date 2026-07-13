@@ -83,6 +83,9 @@ export const HAZARD_BASE = [
   'Sinkholes', 'Contaminated water sources', 'Sound-triggered rockfalls', 'Feral spirit hauntings',
 ];
 
+export const MOUNT_TYPES = ['Warhorse', 'Direwolf', 'Griffon', 'Armored Boar', 'Skeletal Steed', 'Giant Lizard', 'Storm Hawk', 'War Elephant', 'Sand Drake', 'Frost Elk'];
+export const PERSONALITY_TRAITS = ['Stoic', 'Loyal', 'Quick-tempered', 'Wry', 'Guarded', 'Idealistic', 'Pragmatic', 'Superstitious', 'Blunt', 'Warm',
+  'Ambitious', 'Anxious', 'Fiercely independent', 'Overly formal', 'Reckless', 'Patient', 'Suspicious of strangers', 'Secretly sentimental', 'Competitive', 'Self-deprecating'];
 export const CLIMATES = ['Arid desert', 'Tropical humid', 'Temperate seasonal', 'Subarctic', 'Polar', 'Mediterranean', 'Monsoon', 'Alpine', 'Continental', 'Oceanic'];
 export const POLITICAL_STRUCTURES = ['Monarchy', 'Council/Oligarchy', 'Theocracy', 'Democracy', 'Military Junta', 'Corporate', 'Anarchic/Leaderless'];
 export const REPUTATION_TIERS = ['Hostile', 'Unfriendly', 'Neutral', 'Friendly', 'Honored', 'Allied'];
