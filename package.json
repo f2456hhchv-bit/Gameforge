@@ -1,0 +1,22 @@
+{
+  "name": "gameforge",
+  "version": "1.0.0",
+  "description": "GameForge Studio - browser-based game design & development studio (static, IndexedDB-backed, no server required)",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./css/input.css -o ./css/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./css/input.css -o ./css/tailwind.css --watch",
+    "serve": "python3 -m http.server 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:41729/git/f2456hhchv-bit/Gameforge"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "playwright": "^1.61.1",
+    "tailwindcss": "^3.4.19"
+  }
+}
