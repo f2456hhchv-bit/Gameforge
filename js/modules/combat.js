@@ -118,6 +118,29 @@ export function generateAbility(rng) {
   };
 }
 
+export function generateComboString(rng) {
+  const hitCount = 3 + Math.floor(rng() * 3);
+  const inputs = Array.from({ length: hitCount }, (_, i) => i === hitCount - 1 ? pick(['Heavy', 'Launcher', 'Finisher'], rng) : pick(['Light', 'Light', 'Medium'], rng));
+  return {
+    subtype: 'combo-string', name: `${inputs.join(' → ')}`,
+    description: `A ${hitCount}-hit combo string ending in a ${inputs[inputs.length - 1].toLowerCase()}.`,
+    inputSequence: inputs,
+    totalDamageMultiplier: `${(1 + hitCount * 0.35).toFixed(1)}x base hit`,
+    cancelWindows: 'The first two hits can be cancelled into a dodge; the finisher commits fully.',
+  };
+}
+
+export function generateEnvironmentalHazard(rng) {
+  const type = pick(['Explosive', 'Elemental', 'Structural Collapse', 'Trap'], rng);
+  return {
+    subtype: 'environmental-hazard', name: `${type} Hazard`,
+    description: `A ${type.toLowerCase()} hazard placeable in levels for both player and AI to exploit.`,
+    hazardType: type,
+    triggerMechanism: pick(['Shoot to detonate', 'Step on pressure plate', 'Nearby fire spreads to it', 'Sustained damage breaks it'], rng),
+    areaOfEffect: `${2 + Math.floor(rng() * 4)}m radius`,
+  };
+}
+
 const GENERATORS = [
   {
     label: 'Generate Ability', run: () => generateAbility(rngFor(Math.random())),
@@ -142,33 +165,8 @@ const GENERATORS = [
       telegraph: 'Red ground indicator + roar animation', counterplay: 'Dodge roll through the indicator or break line of sight.',
     }),
   },
-  {
-    label: 'Draft Combo String', run: () => {
-      const rng = rngFor(Math.random());
-      const hitCount = 3 + Math.floor(rng() * 3);
-      const inputs = Array.from({ length: hitCount }, (_, i) => i === hitCount - 1 ? pick(['Heavy', 'Launcher', 'Finisher'], rng) : pick(['Light', 'Light', 'Medium'], rng));
-      return {
-        subtype: 'combo-string', name: `${inputs.join(' → ')}`,
-        description: `A ${hitCount}-hit combo string ending in a ${inputs[inputs.length - 1].toLowerCase()}.`,
-        inputSequence: inputs,
-        totalDamageMultiplier: `${(1 + hitCount * 0.35).toFixed(1)}x base hit`,
-        cancelWindows: 'The first two hits can be cancelled into a dodge; the finisher commits fully.',
-      };
-    },
-  },
-  {
-    label: 'Draft Environmental Hazard', run: () => {
-      const rng = rngFor(Math.random());
-      const type = pick(['Explosive', 'Elemental', 'Structural Collapse', 'Trap'], rng);
-      return {
-        subtype: 'environmental-hazard', name: `${type} Hazard`,
-        description: `A ${type.toLowerCase()} hazard placeable in levels for both player and AI to exploit.`,
-        hazardType: type,
-        triggerMechanism: pick(['Shoot to detonate', 'Step on pressure plate', 'Nearby fire spreads to it', 'Sustained damage breaks it'], rng),
-        areaOfEffect: `${2 + Math.floor(rng() * 4)}m radius`,
-      };
-    },
-  },
+  { label: 'Draft Combo String', run: () => generateComboString(rngFor(Math.random())) },
+  { label: 'Draft Environmental Hazard', run: () => generateEnvironmentalHazard(rngFor(Math.random())) },
 ];
 
 export function mountCombat(container, opts) {

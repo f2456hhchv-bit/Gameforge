@@ -15,7 +15,7 @@ import { generatePlace, generateFaction, generateContinent } from './world.js';
 import { generateCharacter, generateFactionRosterMember, generateGauntletBoss } from './characters.js';
 import { generateItem, generateLegendarySetItem, generateStarterLoadoutItem } from './items.js';
 import { generateLevel } from './levels.js';
-import { generateAbility } from './combat.js';
+import { generateAbility, generateComboString, generateEnvironmentalHazard } from './combat.js';
 import { generatePrompt } from './art.js';
 import { generateAchievement } from './achievements.js';
 import { generateScreen, SUBTYPES as UI_SUBTYPES } from './uiDesigner.js';
@@ -30,6 +30,41 @@ import { generateMashupBrief } from '../mashup.js';
 // collectionView, so a chat-generated entity gets exactly the same
 // auto-created production task as one made through the module's own button.
 const CONTENT_TYPES = [
+  // Phase 30-35 additions, kept ahead of the generic single-word entries
+  // below (e.g. "weapon", "boss", "character", "quest", "achievement") since
+  // matchContentType picks the first array match and phrases like "weapon
+  // skin" or "character creation" would otherwise be swallowed by those.
+  { keywords: ['cutscene art', 'cinematic art'], collection: 'artPrompts', subtype: 'cutscene', generate: (rng) => generatePrompt(rng, 'cutscene') },
+  { keywords: ['box art', 'cover art'], collection: 'artPrompts', subtype: 'box-art', generate: (rng) => generatePrompt(rng, 'box-art') },
+  { keywords: ['app icon', 'game icon', 'thumbnail'], collection: 'artPrompts', subtype: 'icon', generate: (rng) => generatePrompt(rng, 'icon') },
+  { keywords: ['achievement icon', 'trophy icon'], collection: 'artPrompts', subtype: 'achievement-icon', generate: (rng) => generatePrompt(rng, 'achievement-icon') },
+  { keywords: ['weapon skin'], collection: 'artPrompts', subtype: 'weapon-skin', generate: (rng) => generatePrompt(rng, 'weapon-skin') },
+  { keywords: ['mood board'], collection: 'artPrompts', subtype: 'mood-board', generate: (rng) => generatePrompt(rng, 'mood-board') },
+  { keywords: ['texture study'], collection: 'artPrompts', subtype: 'texture-study', generate: (rng) => generatePrompt(rng, 'texture-study') },
+  { keywords: ['lighting study'], collection: 'artPrompts', subtype: 'lighting-study', generate: (rng) => generatePrompt(rng, 'lighting-study') },
+  { keywords: ['turnaround'], collection: 'artPrompts', subtype: 'turnaround', generate: (rng) => generatePrompt(rng, 'turnaround') },
+  { keywords: ['tutorial screen', 'onboarding screen'], collection: 'uiScreens', subtype: 'tutorial', generate: (rng) => generateScreen(rng, 'tutorial'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['notification', 'toast'], collection: 'uiScreens', subtype: 'notification', generate: (rng) => generateScreen(rng, 'notification'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['dialogue box', 'dialog box'], collection: 'uiScreens', subtype: 'dialogue', generate: (rng) => generateScreen(rng, 'dialogue'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['crafting ui', 'crafting screen'], collection: 'uiScreens', subtype: 'crafting', generate: (rng) => generateScreen(rng, 'crafting'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['leaderboard'], collection: 'uiScreens', subtype: 'leaderboard', generate: (rng) => generateScreen(rng, 'leaderboard'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['social screen', 'friends list'], collection: 'uiScreens', subtype: 'social', generate: (rng) => generateScreen(rng, 'social'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['achievements screen'], collection: 'uiScreens', subtype: 'achievements-ui', generate: (rng) => generateScreen(rng, 'achievements-ui'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['pause menu'], collection: 'uiScreens', subtype: 'pause', generate: (rng) => generateScreen(rng, 'pause'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['game over screen', 'victory screen'], collection: 'uiScreens', subtype: 'game-over', generate: (rng) => generateScreen(rng, 'game-over'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['character creation'], collection: 'uiScreens', subtype: 'character-creation', generate: (rng) => generateScreen(rng, 'character-creation'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['quest log', 'codex'], collection: 'uiScreens', subtype: 'quest-log', generate: (rng) => generateScreen(rng, 'quest-log'), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['stinger'], collection: 'audioEntries', subtype: 'stinger', generate: (rng) => generateAudio(rng, 'stinger'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
+  { keywords: ['jingle', 'fanfare'], collection: 'audioEntries', subtype: 'jingle', generate: (rng) => generateAudio(rng, 'jingle'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
+  { keywords: ['boss theme'], collection: 'audioEntries', subtype: 'boss-theme', generate: (rng) => generateAudio(rng, 'boss-theme'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
+  { keywords: ['cutscene score'], collection: 'audioEntries', subtype: 'cutscene-score', generate: (rng) => generateAudio(rng, 'cutscene-score'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
+  { keywords: ['voice bed', 'crowd ambience', 'crowd voice'], collection: 'audioEntries', subtype: 'ambient-voice-bed', generate: (rng) => generateAudio(rng, 'ambient-voice-bed'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
+  { keywords: ['combo string'], collection: 'combatEntries', subtype: 'combo-string', generate: (rng) => generateComboString(rng), taskFor: (i) => ({ category: 'code', estimateHours: 3, title: `Implement: ${i.name}` }) },
+  { keywords: ['environmental hazard'], collection: 'combatEntries', subtype: 'environmental-hazard', generate: (rng) => generateEnvironmentalHazard(rng), taskFor: (i) => ({ category: 'code', estimateHours: 3, title: `Implement: ${i.name}` }) },
+  { keywords: ['escort quest', 'escort mission'], collection: 'quests', subtype: 'escort', generate: (rng) => generateQuest(rng, 'escort'), taskFor: (i) => ({ category: 'writing', estimateHours: 5, title: `Write & implement quest: ${i.name}` }) },
+  { keywords: ['collection quest'], collection: 'quests', subtype: 'collection', generate: (rng) => generateQuest(rng, 'collection'), taskFor: (i) => ({ category: 'writing', estimateHours: 5, title: `Write & implement quest: ${i.name}` }) },
+  { keywords: ['investigation quest', 'mystery quest'], collection: 'quests', subtype: 'investigation', generate: (rng) => generateQuest(rng, 'investigation'), taskFor: (i) => ({ category: 'writing', estimateHours: 5, title: `Write & implement quest: ${i.name}` }) },
+  { keywords: ['timed event quest', 'timed quest'], collection: 'quests', subtype: 'timed-event', generate: (rng) => generateQuest(rng, 'timed-event'), taskFor: (i) => ({ category: 'writing', estimateHours: 5, title: `Write & implement quest: ${i.name}` }) },
   { keywords: ['weapon'], collection: 'items', subtype: 'weapon', generate: (rng) => generateItem(rng, 'weapon'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
   { keywords: ['armor', 'armour'], collection: 'items', subtype: 'armor', generate: (rng) => generateItem(rng, 'armor'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
   { keywords: ['accessor'], collection: 'items', subtype: 'accessory', generate: (rng) => generateItem(rng, 'accessory'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
@@ -175,7 +210,7 @@ const HELP_TEXT = `I'm a local command assistant — everything I do runs entire
 • "generate a quest chain" (a linked multi-stage story arc)
 • "suggest a genre mashup" (seeds a pillar + USP from a real, researched untried genre combination — see the Industry Research Brief in Documentation)
 
-I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues, art prompts and achievements/trophies — plus the themed multi-entity variants above.`;
+I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests (including escort/collection/investigation/timed-event), levels, abilities, combo strings, environmental hazards, UI screens (including tutorials, notifications, dialogue boxes, crafting, leaderboards, pause menus, character creation, quest logs), audio cues (including stingers, jingles, boss themes, cutscene scores), art prompts (including box art, icons, weapon skins, mood boards, texture/lighting studies, turnarounds) and achievements/trophies — plus the themed multi-entity variants above.`;
 
 function handleCommand(text) {
   const lower = text.toLowerCase().trim();
