@@ -26,7 +26,8 @@ Then open `http://localhost:8080/index.html`. Note: opening `index.html` directl
 - **Audio Designer** — music, SFX, ambience, voice direction, triggers and mixing notes.
 - **Quest Designer** — main/side/faction/world-event/repeatable quests with stages, dialogue, branching, failure conditions, rewards and prerequisite chains.
 - **Task Manager** — kanban board + list view; every generated asset automatically creates a linked production task.
-- **Documentation** — GDD, TDD, Art/Audio/Lore Bibles, coding & asset-naming standards, folder structure, production plan, QA doc, release/patch notes — all generated live from the project database, plus a one-click "Compile Master Document" that stitches all of them into one exportable file.
+- **Achievements** — Bronze/Silver/Gold/Platinum trophies with unlock criteria, points, hidden-achievement flags and rarity notes, linkable to the quest or boss that grants each one.
+- **Documentation** — GDD, TDD, Art/Audio/Lore Bibles, coding & asset-naming standards, folder structure, production plan, QA doc, release/patch notes, marketing one-pager, accessibility statement, post-mortem, and an Industry Research Brief — all generated live from the project database, plus a one-click "Compile Master Document" that stitches all of them into one exportable file.
 - **Relationship Graph** — every entity in the project as a node, every reference as an edge, laid out with a real force-directed algorithm — pan/zoom/drag, click a node to jump to it.
 - **AI Assistant** — a persistent chat panel (local, deterministic command parser — no external LLM) that can generate content in bulk, balance enemies, draft quests, tune progression, and rewrite lore on request.
 
@@ -34,11 +35,15 @@ Everything is linked: characters reference biomes and drop items, levels referen
 
 ## Starter templates
 
-Creating a project (first run, or "+ New Project") offers a template picker with **21 genre packs plus Blank Project**. Each non-blank template seeds real, cross-linked pillars, world, characters, items, a quest chain and a level in one step — a genuine starting point, not placeholder text. Picking a template is a single undo step (Ctrl+Z returns to blank).
+Creating a project (first run, or "+ New Project") offers a template picker with **26 genre packs plus Blank Project**. Each non-blank template seeds real, cross-linked pillars, world, characters, items, a quest chain and a level in one step — a genuine starting point, not placeholder text. Picking a template is a single undo step (Ctrl+Z returns to blank).
 
 - **Core genres:** Fantasy Action RPG, Sci-Fi Shooter, Metroidvania, Cozy Life Sim.
 - **Extended genres:** Horror Survival, Puzzle-Platformer, Tower Defense, Roguelike, Visual Novel, Strategy/4X, Card Game/Deckbuilder, Farming Sim, Battle Royale.
-- **Research-backed hybrids** — genre-mechanic combinations conspicuously rare or absent at an award-winning level, identified from 20 years of Game Awards/D.I.C.E./BAFTA/Metacritic history (see the Documentation module's **Industry Research Brief**): Cozy Extraction, Grand Tactics, Narrative Roguelite, Deckbuilder Explorer, Branching Asymmetric Horror, Co-op Soulslike. The AI Assistant's "suggest a genre mashup" command generates more of these on demand from the same research.
+- **Research-backed hybrids** — genre-mechanic combinations conspicuously rare or absent at an award-winning level, identified from 20 years of Game Awards/D.I.C.E./BAFTA/Metacritic history (see the Documentation module's **Industry Research Brief**): Cozy Extraction, Grand Tactics, Narrative Roguelite, Deckbuilder Explorer, Branching Asymmetric Horror, Co-op Soulslike, Living Farm, Simulated Siege, Settled Walking Sim, Duelist's Court, Annexed Frontier. The AI Assistant's "suggest a genre mashup" command generates more of these on demand from the same research (20 combinations total).
+
+## Economy balancing
+
+Item Studio has a **Drop Rate Simulator** (🎲 in the toolbar) that runs thousands of simulated rarity rolls using the exact same weighted table the generator uses, charting the resulting distribution before you generate any real items. Game Designer can generate a data-driven **Economy Report** — total item value in circulation, total quest reward XP, rarity distribution, and a first-pass sources/sinks breakdown — computed live from the current project rather than filled in by hand.
 
 ## Distributing it to other people
 
