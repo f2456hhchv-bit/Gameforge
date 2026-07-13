@@ -35,11 +35,11 @@ Everything is linked: characters reference biomes and drop items, levels referen
 
 ## Starter templates
 
-Creating a project (first run, or "+ New Project") offers a template picker with **26 genre packs plus Blank Project**. Each non-blank template seeds real, cross-linked pillars, world, characters, items, a quest chain and a level in one step — a genuine starting point, not placeholder text. Picking a template is a single undo step (Ctrl+Z returns to blank).
+Creating a project (first run, or "+ New Project") offers a template picker with **33 genre packs plus Blank Project**. Each non-blank template seeds real, cross-linked pillars, world, characters, items, a quest chain and a level in one step — a genuine starting point, not placeholder text. Picking a template is a single undo step (Ctrl+Z returns to blank).
 
 - **Core genres:** Fantasy Action RPG, Sci-Fi Shooter, Metroidvania, Cozy Life Sim.
 - **Extended genres:** Horror Survival, Puzzle-Platformer, Tower Defense, Roguelike, Visual Novel, Strategy/4X, Card Game/Deckbuilder, Farming Sim, Battle Royale.
-- **Research-backed hybrids** — genre-mechanic combinations conspicuously rare or absent at an award-winning level, identified from 20 years of Game Awards/D.I.C.E./BAFTA/Metacritic history (see the Documentation module's **Industry Research Brief**): Cozy Extraction, Grand Tactics, Narrative Roguelite, Deckbuilder Explorer, Branching Asymmetric Horror, Co-op Soulslike, Living Farm, Simulated Siege, Settled Walking Sim, Duelist's Court, Annexed Frontier. The AI Assistant's "suggest a genre mashup" command generates more of these on demand from the same research (20 combinations total).
+- **Research-backed hybrids** — genre-mechanic combinations conspicuously rare or absent at an award-winning level, identified from 20 years of Game Awards/D.I.C.E./BAFTA/Metacritic history (see the Documentation module's **Industry Research Brief**): Cozy Extraction, Grand Tactics, Narrative Roguelite, Deckbuilder Explorer, Branching Asymmetric Horror, Co-op Soulslike, Living Farm, Simulated Siege, Settled Walking Sim, Duelist's Court, Annexed Frontier, Systemic Empire, Rhythm Soulslike, Chronicle Royale, Asymmetric Deckbuilder, Seasonal Puzzle World, Roguelite Circuit, Diplomatic Hearts, Extraction Homestead, Seasonal Sandbox — all 20 researched genre gaps now have a full starter template.
 
 ## Economy balancing
 

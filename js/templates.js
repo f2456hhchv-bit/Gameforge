@@ -916,4 +916,292 @@ export const TEMPLATES = [
       store.logActivity('Seeded project from the Metroidvania Empire starter pack', { icon: '✨' });
     },
   },
+  {
+    key: 'systemic-empire', label: 'Systemic Empire', icon: '🏛️',
+    description: 'A researched-gap hybrid: the same simulated systems (fire, weather, disease) that affect a single tactical battle also directly affect empire-wide resource yields — not two separate abstraction layers.',
+    meta: { genre: 'Systemic Empire', platform: ['PC'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('systemic-empire-' + Date.now());
+      const g = gap('Systemic Empire');
+      const resources = pickN(STRATEGY_RESOURCE_TYPES, 3, rng);
+      seedPillar('One simulation, every scale', g.rationale);
+      seedPillar('Fire doesn\'t stop at the battle\'s edge', `A blaze started in a tactical skirmish can spread to burn the ${resources[0]}-producing fields feeding the whole empire.`);
+      seedCoreLoop(['Manage Empire-Wide Systems', 'Zoom Into a Contested Territory', 'Fight With the Same Simulated Rules', 'Watch Consequences Ripple Back Out', 'Replan the Empire'], 'A single fire, plague or flood event is tracked identically whether viewed at the tactical or empire scale.', 14);
+      seedUSP(`An empire strategy game with no separate "battle abstraction" layer: ${g.rationale}`, [`Tracked empire resources: ${resources.join(', ')}`, 'Tactical-scale events directly modify empire-scale yields']);
+      seedDifficulty(['Standard', 'Cascading Crisis (systemic events compound faster)'], 'Cascading Crisis mode shortens the delay between a local disaster and its empire-wide consequences.');
+
+      const capital = seedPlace(rng, 'city');
+      const contestedRegion = seedPlace(rng, 'region');
+      const rivalFaction = seedFaction(rng);
+
+      seedCharacter(rng, 'player', { name: 'The Sovereign Architect' });
+      const general = seedCharacter(rng, 'companion', { description: 'Commands tactical engagements that ripple back into empire-wide resource yields.' });
+      general.links.spawnBiome = capital.id;
+      const rivalCommander = seedCharacter(rng, 'boss', { name: `${rivalFaction.name} Warlord` });
+      rivalCommander.links.spawnBiome = contestedRegion.id;
+
+      resources.forEach(() => seedItem(rng, 'currency'));
+      const siegeEngine = seedItem(rng, 'weapon');
+      rivalCommander.links.drops = [siegeEngine.id];
+
+      seedQuest(rng, 'main', { name: `Contest ${contestedRegion.name}` }).links.location = contestedRegion.id;
+
+      const level = seedLevel(rng, { layoutType: 'Open World' });
+      level.links = { biome: contestedRegion.id, enemies: [rivalCommander.id], lootTable: [siegeEngine.id] };
+
+      seedAbility(rng);
+      store.logActivity('Seeded project from the Systemic Empire starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'rhythm-soulslike', label: 'Rhythm Soulslike', icon: '🥁',
+    description: 'A researched-gap hybrid: punishing, precise parry/dodge timing married to a music-reactive difficulty curve and stamina-gated combat, at genuine Soulslike build-crafting depth rather than a light rhythm-action spinoff.',
+    meta: { genre: 'Rhythm Soulslike', platform: ['PC', 'PlayStation'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('rhythm-soulslike-' + Date.now());
+      const g = gap('Rhythm Soulslike');
+      seedPillar('Every boss is a song you learn', g.rationale);
+      seedPillar('Stamina is the downbeat', 'Stamina regenerates on the beat, not on a flat timer — off-rhythm play is punished exactly the way a Souls game punishes panic-rolling.');
+      seedCoreLoop(['Learn the Boss\'s Musical Attack Pattern', 'Parry/Dodge On the Beat', 'Rest & Retry at a Checkpoint', 'Internalize the Rhythm', 'Defeat the Boss On-Tempo'], 'Perfectly-timed, on-beat parries deal bonus damage and refund stamina, rewarding rhythm mastery the same way Souls rewards pattern mastery.', 10);
+      seedUSP(`A Soulslike where the boss fight IS the song: ${g.rationale}`, ['On-beat parries deal bonus damage', 'Death resets the song, not just the fight']);
+      seedDifficulty(['Standard', 'Perfect Pitch (no off-beat inputs accepted)'], 'Perfect Pitch mode rejects inputs that land even slightly off-tempo.');
+
+      const arena = seedPlace(rng, 'region');
+      seedCharacter(rng, 'player', { name: 'The Silent Dancer' });
+      const boss = seedCharacter(rng, 'boss', { description: 'Attacks in a fixed musical pattern that escalates in tempo each phase.' });
+      boss.links.spawnBiome = arena.id;
+
+      const weapon = seedItem(rng, 'weapon');
+      const relic = seedItem(rng, 'quest-item');
+      boss.links.drops = [weapon.id, relic.id];
+
+      seedQuest(rng, 'main', { name: `Defeat ${boss.name}` }).links.location = arena.id;
+
+      const level = seedLevel(rng, { layoutType: 'Arena' });
+      level.links = { biome: arena.id, enemies: [boss.id], lootTable: [weapon.id] };
+
+      seedAbility(rng);
+      seedAbility(rng);
+      store.logActivity('Seeded project from the Rhythm Soulslike starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'narrative-battle-royale', label: 'Chronicle Royale', icon: '📡',
+    description: 'A researched-gap hybrid: matches feed an evolving, branching meta-narrative that shifts based on aggregate player behavior across seasons, rather than battle royale\'s usual cosmetic-only meta-progression.',
+    meta: { genre: 'Narrative Battle Royale', platform: ['PC', 'Xbox'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('narrative-battle-royale-' + Date.now());
+      const g = gap('Narrative Battle Royale');
+      const zone = pick(BATTLE_ROYALE_ZONES, rng);
+      const arc = pick(VISUAL_NOVEL_ARCS, rng);
+      seedPillar('Every match writes the next chapter', g.rationale);
+      seedPillar('The circle tells a story', `This season's meta-narrative arc: ${arc}.`);
+      seedCoreLoop(['Drop Into a Shrinking Map', 'Scavenge & Survive', 'Match Outcome Recorded', 'Aggregate Outcomes Shift the Season Story', 'New Chapter Unlocks for Everyone'], 'Cosmetic-only seasons are replaced by narrative beats that shift based on collective player behavior.', 12);
+      seedUSP(`A battle royale whose meta-progression is a real branching story, not just skins: ${g.rationale}`, [`Current season arc: ${arc}`, 'Aggregate match outcomes — not purchases — unlock new chapters']);
+      seedDifficulty(['Standard', 'Chronicle (permadeath of season-carried narrative items)'], 'Chronicle mode makes narrative-unlocked gear part of the same permadeath stakes as the match itself.');
+
+      const map = seedPlace(rng, 'region');
+      seedCharacter(rng, 'player', { name: 'The Last Broadcaster' });
+      const rival = seedCharacter(rng, 'enemy', { description: `A rival survivor contesting ${zone}.` });
+      rival.links.spawnBiome = map.id;
+
+      const gear = seedItem(rng, 'weapon');
+      seedItem(rng, 'consumable');
+      rival.links.drops = [gear.id];
+
+      seedQuest(rng, 'world-event', { name: `Contest ${zone}` }).links.location = map.id;
+
+      const level = seedLevel(rng, { layoutType: 'Open World' });
+      level.links = { biome: map.id, enemies: [rival.id], lootTable: [gear.id] };
+
+      store.logActivity('Seeded project from the Chronicle Royale starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'asymmetric-deckbuilder', label: 'Asymmetric Deckbuilder', icon: '🃏',
+    description: 'A researched-gap hybrid: one player draws from a "hunter" deck, others from "survivor" decks, resolved in real time — card-driven ability systems replacing a fixed perk system entirely.',
+    meta: { genre: 'Asymmetric Deckbuilder', platform: ['PC'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('asymmetric-deckbuilder-' + Date.now());
+      const g = gap('Asymmetric Deckbuilder');
+      const threat = pick(HORROR_THREATS, rng);
+      const keywords = pickN(CARD_KEYWORDS, 3, rng);
+      seedPillar('Your deck IS your role', g.rationale);
+      seedPillar('The hunter and survivors never see the same cards', `The Hunter is stalked by ${threat}, drawing from a deck built entirely around ambush and area denial; Survivors draw utility and escape cards instead.`);
+      seedCoreLoop(['Draw Your Role-Specific Hand', 'Play Cards In Real Time', 'Hunter Closes In / Survivors Route Around', 'Resolve the Chase', 'Reshuffle for the Next Round'], 'Every perk a fixed system would hardcode is instead a drawable, discardable card.', 9);
+      seedUSP(`Asymmetric horror where builds come from a deck, not a fixed perk board: ${g.rationale}`, [`Card keywords in play: ${keywords.join(', ')}`, `This scenario's threat: ${threat}`]);
+      seedDifficulty(['Standard', 'Thin Deck (fewer cards, higher variance)'], 'Thin Deck mode reduces deck size so individual draws matter far more.');
+
+      const location = seedPlace(rng, 'region');
+      const hunter = seedCharacter(rng, 'boss', { description: `Stalks the location as ${threat}, drawing from a unique Hunter deck.` });
+      hunter.links.spawnBiome = location.id;
+      seedCharacter(rng, 'player', { name: 'The Survivor' });
+      const npc = seedCharacter(rng, 'npc', { description: 'A fellow survivor drawing from the Survivor deck.' });
+      npc.links.spawnBiome = location.id;
+
+      const item = seedItem(rng, 'quest-item');
+      hunter.links.drops = [item.id];
+
+      seedQuest(rng, 'side', { name: `Escape ${location.name}` }).links.location = location.id;
+
+      const level = seedLevel(rng, { layoutType: 'Open World' });
+      level.links = { biome: location.id, enemies: [hunter.id], lootTable: [item.id] };
+
+      store.logActivity('Seeded project from the Asymmetric Deckbuilder starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'seasonal-puzzle-world', label: 'Seasonal Puzzle World', icon: '🧩',
+    description: 'A researched-gap hybrid: a single evolving puzzle world updated with new seasonal RULES (new physics interactions, new mechanics) rather than new cosmetics or new levels bolted onto unchanged systems.',
+    meta: { genre: 'Seasonal Puzzle World', platform: ['PC', 'Nintendo Switch'], engine: 'Godot' },
+    apply: () => {
+      const rng = rngFor('seasonal-puzzle-world-' + Date.now());
+      const g = gap('Seasonal Puzzle World');
+      const mechanics = pickN(PUZZLE_MECHANICS, 3, rng);
+      seedPillar('The rules change; the world doesn\'t', g.rationale);
+      seedPillar('This season\'s new rule', `Season one adds ${mechanics[0]} to every room that previously only supported ${mechanics[1]}.`);
+      seedCoreLoop(['Explore the Persistent Puzzle World', 'Encounter a Room Retrofitted With the New Seasonal Rule', 'Solve It Using Old + New Mechanics Together', 'Unlock the Next Season\'s Rule Layer', 'Replay Early Rooms With New Tools'], 'Nothing is a "new level" — every seasonal drop is a new rule applied retroactively to the whole existing world.', 11);
+      seedUSP(`A puzzle game whose live-service seasons are new physics, not new cosmetics: ${g.rationale}`, [`Mechanics layered so far: ${mechanics.join(', ')}`]);
+      seedDifficulty(['Standard', 'Archivist (must re-solve every old room with the new rule)'], 'Archivist mode requires revisiting and re-solving prior rooms whenever a new seasonal rule drops.');
+
+      const world = seedPlace(rng, 'region');
+      seedCharacter(rng, 'player', { name: 'The Rule-Keeper' });
+      const guide = seedCharacter(rng, 'npc', { description: 'Introduces each new seasonal rule as it unlocks.' });
+      guide.links.spawnBiome = world.id;
+
+      seedItem(rng, 'quest-item');
+      seedQuest(rng, 'main', { name: 'Unlock This Season\'s Rule' }).links.location = world.id;
+
+      const level = seedLevel(rng, { layoutType: 'Hub-and-Spoke' });
+      level.links = { biome: world.id };
+
+      store.logActivity('Seeded project from the Seasonal Puzzle World starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'roguelite-circuit', label: 'Roguelite Circuit', icon: '🏁',
+    description: 'A researched-gap hybrid: procedurally generated race/course layouts with roguelite meta-progression — vehicle upgrades persist across a "season" of procedurally generated races instead of resetting each event.',
+    meta: { genre: 'Roguelite Circuit', platform: ['PC', 'PlayStation'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('roguelite-circuit-' + Date.now());
+      const g = gap('Roguelite Circuit');
+      const modifier = pick(ROGUELIKE_RUN_MODIFIERS, rng);
+      const zone = pick(BATTLE_ROYALE_ZONES, rng);
+      seedPillar('Every season is one long run', g.rationale);
+      seedPillar('The course never repeats; the garage always does', `This event's run modifier: ${modifier}. Vehicle upgrades earned this race carry into the next, even though the ${zone}-based course layout is regenerated from scratch.`);
+      seedCoreLoop(['Race a Procedurally Generated Course', 'Bank Upgrade Currency', 'A Crash Ends the Run\'s Course Streak', 'Meta-Progression Persists to the Next Season', 'Push Deeper Into the Circuit'], 'A crash ends this run\'s course streak but permanently banked vehicle upgrades carry into the next season.', 9);
+      seedUSP(`A racer with genuine roguelite stakes: ${g.rationale}`, [`Active run modifier: ${modifier}`]);
+      seedDifficulty(['Standard', 'No Rebuild (a crash forfeits all unbanked upgrades)'], 'No Rebuild mode removes the safety net of partial upgrade banking mid-run.');
+
+      const course = seedPlace(rng, 'region');
+      seedCharacter(rng, 'player', { name: 'The Circuit Runner' });
+      const rival = seedCharacter(rng, 'enemy', { description: `A rival racer contesting the ${zone} stretch of the course.` });
+      rival.links.spawnBiome = course.id;
+
+      const vehiclePart = seedItem(rng, 'accessory');
+      seedItem(rng, 'currency');
+      rival.links.drops = [vehiclePart.id];
+
+      seedQuest(rng, 'repeatable', { name: 'Win the Circuit Race' }).links.location = course.id;
+
+      const level = seedLevel(rng, { layoutType: 'Procedural Dungeon' });
+      level.links = { biome: course.id, enemies: [rival.id], lootTable: [vehiclePart.id] };
+
+      store.logActivity('Seeded project from the Roguelite Circuit starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'diplomatic-hearts', label: 'Diplomatic Hearts', icon: '🕊️',
+    description: 'A researched-gap hybrid: diplomacy modeled as deep, branching relationship-building with named leader characters (visual-novel depth) rather than an abstracted trust meter and treaty checklist.',
+    meta: { genre: 'Diplomatic Hearts', platform: ['PC'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('diplomatic-hearts-' + Date.now());
+      const g = gap('Diplomatic Hearts');
+      const resources = pickN(STRATEGY_RESOURCE_TYPES, 2, rng);
+      const arc = pick(VISUAL_NOVEL_ARCS, rng);
+      seedPillar('Treaties are relationships, not checkboxes', g.rationale);
+      seedPillar('A rival leader\'s story arc', `This rival leader's arc: ${arc}.`);
+      seedCoreLoop(['Manage Empire Resources', 'Hold a Branching Dialogue With a Rival Leader', 'Choices Shape the Relationship, Not Just a Trust Number', 'Relationship State Unlocks/Locks Treaties', 'Reap or Suffer the Diplomatic Consequences'], 'Every diplomatic outcome traces back to a specific remembered conversation, not an abstracted meter.', 13);
+      seedUSP(`4X diplomacy with visual-novel-depth relationships: ${g.rationale}`, [`Contested resources: ${resources.join(', ')}`, `Rival leader arc: ${arc}`]);
+      seedDifficulty(['Standard', 'Long Memory (leaders never forget a broken promise)'], 'Long Memory mode makes every past diplomatic choice permanently recallable by rival leaders.');
+
+      const capital = seedPlace(rng, 'city');
+      const rivalFaction = seedFaction(rng);
+      seedCharacter(rng, 'player', { name: 'The Envoy-Sovereign' });
+      const rivalLeader = seedCharacter(rng, 'npc', { name: `${rivalFaction.name} Leader`, description: arc });
+      rivalLeader.links.spawnBiome = capital.id;
+
+      resources.forEach(() => seedItem(rng, 'currency'));
+      const treatyGift = seedItem(rng, 'quest-item');
+
+      seedQuest(rng, 'faction', { name: `Negotiate With ${rivalFaction.name}` }).links.location = capital.id;
+
+      const level = seedLevel(rng, { layoutType: 'Hub-and-Spoke' });
+      level.links = { biome: capital.id, lootTable: [treatyGift.id] };
+
+      store.logActivity('Seeded project from the Diplomatic Hearts starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'extraction-homestead', label: 'Extraction Homestead', icon: '🌾',
+    description: 'A researched-gap hybrid: a high-risk "raid the overgrown ruins for rare seeds/relics" loop whose rewards feed directly back into a peaceful, persistent home-base farming sim.',
+    meta: { genre: 'Extraction Homestead', platform: ['PC'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('extraction-homestead-' + Date.now());
+      const g = gap('Extraction Homestead');
+      const crops = pickN(FARMING_CROPS, 3, rng);
+      seedPillar('Risk the ruins, tend the homestead', g.rationale);
+      seedPillar('Every seed has a price', `Rare ${crops[0]} seeds only exist in the ruins — bringing them home safely is the whole raid's point.`);
+      seedCoreLoop(['Raid the Overgrown Ruins', 'Extract Before the Window Closes or Lose Everything Carried', 'Return to the Peaceful Homestead', 'Plant Rare Seeds/Relics', 'Harvest and Reinvest in the Next Raid'], 'Extraction-shooter stakes (lose it all if you die before extracting) directly fund a slow, peaceful farming loop.', 12);
+      seedUSP(`Extraction-shooter tension funding a cosy farming sim: ${g.rationale}`, [`Rare crops recoverable from the ruins: ${crops.join(', ')}`]);
+      seedDifficulty(['Standard', 'Bare Harvest (lose the whole current crop on a failed extraction)'], 'Bare Harvest mode ties the home farm\'s current crop to the outcome of the raid, not just the raid loot itself.');
+
+      const ruins = seedPlace(rng, 'region');
+      const homestead = seedPlace(rng, 'biome');
+      seedCharacter(rng, 'player', { name: 'The Homesteader' });
+      const threat = seedCharacter(rng, 'enemy', { description: 'Guards the overgrown ruins and forces a greed-vs-safety extraction decision.' });
+      threat.links.spawnBiome = ruins.id;
+      const caretaker = seedCharacter(rng, 'npc', { description: 'Tends the homestead while the player is off raiding, and turns raided seeds into crops.' });
+      caretaker.links.spawnBiome = homestead.id;
+
+      crops.forEach(() => seedItem(rng, 'material'));
+      const relic = seedItem(rng, 'quest-item');
+      threat.links.drops = [relic.id];
+
+      seedQuest(rng, 'repeatable', { name: `Raid ${ruins.name}` }).links.location = ruins.id;
+      seedQuest(rng, 'side', { name: `Plant the ${crops[0]} Seeds` }).links.location = homestead.id;
+
+      const level = seedLevel(rng, { layoutType: 'Procedural Dungeon' });
+      level.links = { biome: ruins.id, enemies: [threat.id], lootTable: [relic.id] };
+
+      store.logActivity('Seeded project from the Extraction Homestead starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'seasonal-sandbox', label: 'Seasonal Sandbox', icon: '🧪',
+    description: 'A researched-gap hybrid: a systemic, player-driven simulation sandbox that receives live seasonal narrative content drops with new systemic tools, instead of only cosmetic seasons.',
+    meta: { genre: 'Seasonal Sandbox', platform: ['PC'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('seasonal-sandbox-' + Date.now());
+      const g = gap('Seasonal Sandbox');
+      seedPillar('Seasons add tools, not skins', g.rationale);
+      seedPillar('The sandbox remembers', 'Every systemic tool ever added stays usable together — a fire-spreading tool from season one still interacts with a water-diversion tool added in season four.');
+      seedCoreLoop(['Use the Current Toolset Systemically', 'A New Season Adds a New Systemic Tool', 'Combine New + Old Tools in Unscripted Ways', 'Narrative Beats React to Player-Driven Outcomes', 'Repeat With a Deeper Toolset'], 'Nothing seasonal is cosmetic-only — every drop is a new interactive verb that composes with everything already in the sandbox.', 14);
+      seedUSP(`A live-service immersive sim where seasons deepen the simulation itself: ${g.rationale}`, ['New seasonal content is always a systemic tool, never only a skin']);
+      seedDifficulty(['Standard', 'Full Toolbox (all past-season tools available from the start)'], 'Full Toolbox mode unlocks every previously-seasonal tool immediately for sandbox purists.');
+
+      const sandbox = seedPlace(rng, 'region');
+      seedCharacter(rng, 'player', { name: 'The Systemwright' });
+      const npc = seedCharacter(rng, 'npc', { description: 'Reacts believably to whichever systemic tools the player combines nearby.' });
+      npc.links.spawnBiome = sandbox.id;
+
+      seedItem(rng, 'quest-item');
+      seedQuest(rng, 'world-event', { name: 'This Season\'s Systemic Drop' }).links.location = sandbox.id;
+
+      const level = seedLevel(rng, { layoutType: 'Open World' });
+      level.links = { biome: sandbox.id };
+
+      store.logActivity('Seeded project from the Seasonal Sandbox starter pack', { icon: '✨' });
+    },
+  },
 ];
