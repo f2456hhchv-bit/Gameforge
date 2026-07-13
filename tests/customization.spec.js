@@ -73,6 +73,21 @@ test.describe('Export & customization additions', () => {
     expect(errors).toEqual([]);
   });
 
+  test('command palette "Suggest a Genre Mashup" quick action seeds a pillar', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Mashup Quick Action Test');
+    await page.keyboard.press('Control+k');
+    await page.waitForTimeout(150);
+    await page.locator('#modal-root input').fill('mashup');
+    await page.waitForTimeout(100);
+    await page.getByText('Suggest a Genre Mashup').click();
+    await page.waitForTimeout(300);
+
+    const pillar = await page.evaluate(() => window.__gfStore.project.collections.designDocs.find(d => d.subtype === 'pillar' && d.name.startsWith('Mashup Concept:')));
+    expect(pillar).toBeTruthy();
+    expect(errors).toEqual([]);
+  });
+
   test('new keyboard shortcuts: "/" opens search, Ctrl+J toggles assistant, Ctrl+S saves', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Shortcuts Test');

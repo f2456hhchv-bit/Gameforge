@@ -68,6 +68,25 @@ test.describe('AI Assistant (local command parser)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('"suggest a genre mashup" seeds a pillar + USP from real research', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Genre Mashup Test');
+    await page.getByRole('button', { name: '🤖 Assistant' }).click();
+    await page.waitForTimeout(200);
+    await ask(page, 'suggest a genre mashup');
+
+    const reply = await page.evaluate(() => window.__gfStore.project.collections.assistantLog.at(-1).text);
+    expect(reply).toContain('Genre mashup suggestion');
+
+    const docs = await page.evaluate(() => window.__gfStore.project.collections.designDocs);
+    const pillar = docs.find(d => d.subtype === 'pillar' && d.name.startsWith('Mashup Concept:'));
+    const usp = docs.find(d => d.subtype === 'usp' && d.name.startsWith('USP:'));
+    expect(pillar).toBeTruthy();
+    expect(usp).toBeTruthy();
+    expect(pillar.statement.length).toBeGreaterThan(20);
+    expect(errors).toEqual([]);
+  });
+
   test('generates the new multi-entity variants: legendary set, faction roster, boss gauntlet, continent, quest chain', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Assistant Variants Test');

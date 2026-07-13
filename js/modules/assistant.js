@@ -22,6 +22,7 @@ import { generateAudio } from './audio.js';
 import { generateQuest, generateQuestChainEntry } from './quests.js';
 import { runProjectAudit } from '../audit.js';
 import { suggestLinks, applyAllLinkSuggestions } from '../linking.js';
+import { generateMashupBrief } from '../mashup.js';
 
 // Ordered most-specific-first so e.g. "weapon" matches before generic "item".
 // `taskFor` mirrors the onCreate hook each module's own UI wires into
@@ -170,6 +171,7 @@ const HELP_TEXT = `I'm a local command assistant — everything I do runs entire
 • "generate a faction roster" (leader + themed members) / "generate a boss gauntlet" (escalating difficulty sequence)
 • "generate a continent" (large, multi-biome world entry)
 • "generate a quest chain" (a linked multi-stage story arc)
+• "suggest a genre mashup" (seeds a pillar + USP from a real, researched untried genre combination — see the Industry Research Brief in Documentation)
 
 I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues and art prompts — plus the themed multi-entity variants above.`;
 
@@ -228,6 +230,10 @@ function handleCommand(text) {
     const count = extractCount(lower, 5);
     const created = runBulkGenerateVariant('quests', 'Quest Chain', generateQuestChainEntry, count, 'main');
     return `Created a ${created.length}-stage quest chain: ${created.map(c => c.name).join(' → ')}. Open Quest Designer to review.`;
+  }
+  if (/mashup|genre blend|combine genres|blend genres/.test(lower)) {
+    const { combo } = generateMashupBrief();
+    return `Genre mashup suggestion: **${combo.name}** (${combo.combo.join(' + ')}). ${combo.rationale} Added as a pillar + USP in Game Designer — open it to build the concept out further.`;
   }
   if (/\b(generate|create|add|make)\b/.test(lower)) {
     const ct = matchContentType(lower);

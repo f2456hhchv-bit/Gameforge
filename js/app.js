@@ -8,6 +8,7 @@ import { COLLECTIONS } from './schema.js';
 import { TEMPLATES } from './templates.js';
 import { exportXLSXMultiSheet } from './modules/exportManager.js';
 import { runProjectAudit } from './audit.js';
+import { generateMashupBrief } from './mashup.js';
 
 const root = document.getElementById('app');
 
@@ -412,6 +413,7 @@ const QUICK_ACTIONS = [
   { label: 'Export Full Project to Excel', icon: '📊', run: () => exportFullProjectExcel() },
   { label: 'Keyboard Shortcuts', icon: '⌨', run: () => openShortcutsModal() },
   { label: 'Run Project Audit', icon: '🩺', run: () => { const { summary } = runProjectAudit(); toast(summary, { type: 'info' }); openTab('dashboard'); } },
+  { label: 'Suggest a Genre Mashup', icon: '🧬', run: () => { const { combo } = generateMashupBrief(); toast(`Genre mashup: ${combo.name} (${combo.combo.join(' + ')})`, { type: 'success' }); openTab('designer'); } },
 ];
 
 function openCommandPalette() {
