@@ -200,7 +200,7 @@ function renderTopbar() {
   const projSwitch = h('button', {
     class: 'flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-surface-2 text-sm font-semibold min-w-0',
     onclick: openProjectSwitcher,
-  }, [h('span', {}, '🎮'), h('span', { class: 'max-w-[120px] sm:max-w-[220px] truncate' }, project?.name || 'No project'), h('span', { class: 'text-xs text-slate-400' }, '▾')]);
+  }, [h('span', {}, '🎮'), h('span', { class: 'max-w-[64px] sm:max-w-[220px] truncate' }, project?.name || 'No project'), h('span', { class: 'text-xs text-slate-400' }, '▾')]);
 
   const saveIndicator = h('span', { id: 'save-indicator', class: 'text-xs text-slate-400 flex items-center gap-1' }, [h('span', {}, '●'), h('span', { class: 'hidden md:inline' }, ' Saved')]);
 
@@ -220,12 +220,8 @@ function renderTopbar() {
     h('span', {}, '🔍'), h('span', { class: 'hidden sm:inline' }, ' Search…'),
     h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded hidden sm:inline' }, 'Ctrl K'),
   ]);
-  const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', 'aria-label': 'Project backup menu', onclick: openBackupMenu }, '⋮');
+  const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project, live site link', 'aria-label': 'Project backup menu', onclick: openBackupMenu }, '⋮');
   const helpBtn = h('button', { class: 'btn-icon', title: 'Keyboard shortcuts (?)', 'aria-label': 'Keyboard shortcuts', onclick: openShortcutsModal }, '⌨');
-  const liveSiteLink = h('a', {
-    href: LIVE_SITE_URL, target: '_blank', rel: 'noopener noreferrer',
-    class: 'btn-icon', title: 'Open the live hosted site in a new tab', 'aria-label': 'Open live site',
-  }, '🔗');
   const assistantBtn = h('button', { class: 'btn-secondary text-sm', title: 'AI Assistant', onclick: toggleAssistant }, [h('span', {}, '🤖'), h('span', { class: 'hidden sm:inline' }, ' Assistant')]);
 
   bar.append(
@@ -233,10 +229,12 @@ function renderTopbar() {
     h('div', { class: 'flex-1 min-w-0 flex justify-center' }, [searchBtn]),
     h('div', { class: 'flex items-center gap-1 shrink-0' }, [
       saveIndicator, undoBtn, redoBtn,
-      // Theme/accent/help/backup/live-site are all reachable via the search/
-      // command-palette's Quick Actions, so they're desktop-only chrome —
-      // there's no room for them on a phone-width topbar.
-      h('div', { class: 'hidden md:flex items-center gap-1' }, [themeBtn, accentBtn, liveSiteLink, helpBtn, backupBtn]),
+      // Theme/accent/help are reachable via the search/command-palette's
+      // Quick Actions, so they're desktop-only chrome — no room for them on
+      // a phone-width topbar. The ⋮ menu (incl. the live site link) stays
+      // visible on every screen size since it's a single compact icon.
+      h('div', { class: 'hidden md:flex items-center gap-1' }, [themeBtn, accentBtn, helpBtn]),
+      backupBtn,
       assistantBtn,
     ]),
   );
@@ -325,6 +323,10 @@ function openBackupMenu() {
     }
   });
   const content = h('div', { class: 'flex flex-col gap-3' }, [
+    h('a', {
+      href: LIVE_SITE_URL, target: '_blank', rel: 'noopener noreferrer',
+      class: 'btn-secondary justify-start', onclick: () => closeTopModal(),
+    }, '🔗 Open Live Site'),
     h('button', {
       class: 'btn-secondary justify-start', onclick: () => {
         download(`${store.project.name.replace(/[^a-z0-9]+/gi, '-')}.json`, JSON.stringify(store.project, null, 2), 'application/json');
@@ -338,7 +340,7 @@ function openBackupMenu() {
     fileInput,
     h('p', { class: 'text-xs text-slate-400' }, 'Backups contain everything — every character, item, biome, task and document. Great for switching devices or keeping a snapshot before a big change.'),
   ]);
-  openModal(content, { title: 'Project Backup', width: '420px' });
+  openModal(content, { title: 'Project Backup & Links', width: '420px' });
 }
 
 function updateSaveIndicator(reason) {

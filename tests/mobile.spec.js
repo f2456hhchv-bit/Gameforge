@@ -17,6 +17,7 @@ test.describe('Mobile/narrow-viewport layout', () => {
     for (const el of [
       page.locator('button[aria-label="Open navigation menu"]'),
       page.locator('button[aria-label="Search"]'),
+      page.locator('button[aria-label="Project backup menu"]'),
       page.locator('button[title="AI Assistant"]'),
     ]) {
       const box = await el.boundingBox();
@@ -24,14 +25,20 @@ test.describe('Mobile/narrow-viewport layout', () => {
       expect(box.x + box.width).toBeLessThanOrEqual(390);
     }
 
-    // Desktop-only chrome (theme/accent/help/backup/live-site link) is hidden
-    // on mobile, reachable instead via the search/command-palette.
-    await expect(page.locator('a[aria-label="Open live site"]')).toBeHidden();
+    // The live site link lives in the always-visible ⋮ menu, one tap away
+    // even on mobile. Desktop-only chrome (theme/accent/help) is hidden on
+    // mobile but still reachable via the search/command-palette.
+    await page.locator('button[aria-label="Project backup menu"]').click();
+    await page.waitForTimeout(150);
+    await expect(page.getByText('Open Live Site')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+
     await page.locator('button[aria-label="Search"]').click();
     await page.waitForTimeout(150);
-    await page.locator('#modal-root input').fill('live site');
+    await page.locator('#modal-root input').fill('accent');
     await page.waitForTimeout(100);
-    await expect(page.getByText('Open Live Site')).toBeVisible();
+    await expect(page.getByText('Choose Accent Colour')).toBeVisible();
     await page.keyboard.press('Escape');
     await page.waitForTimeout(150);
 
