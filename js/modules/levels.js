@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { ROOM_TYPES, LORE_HOOKS } from '../generators/wordbank.js';
 import { rngFor, generateQuestName, generateBiomeName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
+import { autoTask } from '../taskHooks.js';
 
 const FIELDS = [
   { key: 'biome', label: 'Biome / Setting', type: 'relation', target: 'biomes' },
@@ -57,6 +58,10 @@ export function mountLevels(container, opts) {
     cardBadges: () => [],
     cardMeta,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('levels', item, {
+      category: 'design', estimateHours: 10, title: (i) => `Build level: ${i.name}`,
+      description: `Whitebox, populate and playtest "${item.name}" (${item.layoutType || 'level'}).`,
+    }),
     helpText: 'Levels with rooms, objectives, events, secrets, puzzles, checkpoints, reward placement and navigation notes.',
   });
   return view.mount(container, opts);

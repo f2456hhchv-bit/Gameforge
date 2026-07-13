@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { UI_SCREEN_TYPES } from '../generators/wordbank.js';
 import { rngFor } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
+import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = UI_SCREEN_TYPES.map(t => ({ key: t.key, label: t.label, icon: '🖥️' }));
 
@@ -60,6 +61,10 @@ export function mountUIDesigner(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('uiScreens', item, {
+      category: 'code', estimateHours: 4, title: (i) => `Implement UI screen: ${i.name}`,
+      description: `Build and wire up the "${item.name}" screen.`,
+    }),
     helpText: 'Menus, HUD, inventory, settings, skill trees and popups — with accessibility and controller support built into every screen.',
   });
   return view.mount(container, opts);

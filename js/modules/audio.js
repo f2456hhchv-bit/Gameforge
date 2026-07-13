@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { AUDIO_TYPES, MOODS } from '../generators/wordbank.js';
 import { rngFor } from '../generators/procedural.js';
 import { pick } from '../util.js';
+import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = AUDIO_TYPES.map(t => ({ key: t.key, label: t.label, icon: { music: '🎵', sfx: '💥', ambience: '🌫️', voice: '🎙️', 'ui-sound': '🔘' }[t.key] || '🔊' }));
 
@@ -58,6 +59,10 @@ export function mountAudio(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('audioEntries', item, {
+      category: 'audio', estimateHours: 2, title: (i) => `Produce audio: ${i.name}`,
+      description: `Compose/record and implement "${item.name}".`,
+    }),
     helpText: 'Music direction, sound effects, ambience and voice direction — with triggers linked to the characters, items, levels and abilities that fire them.',
   });
   return view.mount(container, opts);

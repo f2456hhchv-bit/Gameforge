@@ -224,11 +224,13 @@ class Store {
       sprint: task.sprint || '',
       assignee: task.assignee || '',
       dependencies: task.dependencies || [],
-      links: task.links || {},
+      links: task.links || { dependencies: [] },
+      sourceRef: task.sourceRef || null,
       createdAt: nowISO(),
       updatedAt: nowISO(),
     };
     this.project.collections.tasks.push(full);
+    this.touch();
     return full;
   }
 }

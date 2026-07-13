@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateCharacterName, generateCreatureName, statBlockForLevel, generateAbilityName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 import { DAMAGE_TYPES } from '../generators/wordbank.js';
+import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
   { key: 'player', label: 'Player Character', icon: '🦸' },
@@ -84,6 +85,12 @@ export function mountCharacters(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('characters', item, {
+      category: 'art', estimateHours: item.subtype === 'boss' ? 12 : 5,
+      difficulty: item.subtype === 'boss' ? 'hard' : 'medium',
+      title: (i) => `Model, rig & animate: ${i.name}`,
+      description: `Art + animation pass for ${item.subtype || 'character'} "${item.name}".`,
+    }),
     helpText: 'Player characters, enemies, bosses, NPCs, merchants, companions and wildlife all live here — each fully statted and linkable to loot and biomes.',
   });
   return view.mount(container, opts);

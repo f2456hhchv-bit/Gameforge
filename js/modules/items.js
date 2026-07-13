@@ -3,6 +3,7 @@ import { rngFor, generateWeaponName, weaponStats, rarityRoll } from '../generato
 import { pick, pickN } from '../util.js';
 import { RARITIES, badgeForRarity } from '../schema.js';
 import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE } from '../generators/wordbank.js';
+import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
   { key: 'weapon', label: 'Weapon', icon: '🗡️' },
@@ -102,6 +103,10 @@ export function mountItems(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('items', item, {
+      category: 'art', estimateHours: 2, title: (i) => `Create icon/model art: ${i.name}`,
+      description: `Art pass for ${item.subtype || 'item'} "${item.name}" (${item.rarity || 'Common'}).`,
+    }),
     helpText: 'Weapons, armour, accessories, consumables, crafting materials, quest items and currencies — rarity, stats and affixes are all fully editable.',
   });
   return view.mount(container, opts);

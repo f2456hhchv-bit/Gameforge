@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { BIOME_TYPES, WEATHER_BY_BIOME, RESOURCE_BASE, HAZARD_BASE, FACTION_PREFIXES, FACTION_SUFFIXES } from '../generators/wordbank.js';
 import { rngFor, generateBiomeName, generateBiomeLore, generateFactionName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
+import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
   { key: 'biome', label: 'Biome', icon: '🌳' },
@@ -84,6 +85,11 @@ export function mountWorld(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('biomes', item, {
+      category: 'design', estimateHours: item.subtype === 'faction' ? 3 : 6,
+      title: (i) => `Build out: ${i.name}`,
+      description: `Environment/world-building pass for "${item.name}".`,
+    }),
     helpText: 'Biomes, regions, cities, planets, galaxies and factions — everything else (characters, items, levels) can link back here.',
   });
   return view.mount(container, opts);

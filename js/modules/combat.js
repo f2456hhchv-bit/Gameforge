@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { DAMAGE_TYPES, STATUS_EFFECTS } from '../generators/wordbank.js';
 import { rngFor, generateAbilityName } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
+import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
   { key: 'ability', label: 'Ability', icon: '⚡' },
@@ -121,6 +122,10 @@ export function mountCombat(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    onCreate: (item) => autoTask('combatEntries', item, {
+      category: 'code', estimateHours: 3, title: (i) => `Implement: ${i.name}`,
+      description: `Programming + balancing pass for ${item.subtype || 'combat entry'} "${item.name}".`,
+    }),
     helpText: 'Abilities, status effects, damage types, AI behaviour trees, boss mechanics, attack patterns, wave/spawn systems and difficulty scaling.',
   });
   return view.mount(container, opts);

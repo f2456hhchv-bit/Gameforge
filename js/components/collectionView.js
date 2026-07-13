@@ -21,7 +21,7 @@ export function createCollectionView(config) {
     helpText = '',
   } = config;
 
-  let state = { search: '', subtypeFilter: 'all', sort: 'updated', selectedId: null, tagFilter: null };
+  let state = { search: '', subtypeFilter: 'all', sort: 'updated', selectedId: null, tagFilter: null, listWidth: 320 };
   let unsubscribe = null;
   let rootEl = null;
 
@@ -205,7 +205,42 @@ export function createCollectionView(config) {
       ]);
       bar.appendChild(chips);
     }
+    const allTags = [...new Set(store.list(key).flatMap(i => i.tags || []))];
+    if (allTags.length) {
+      const tagChips = h('div', { class: 'flex gap-1.5 flex-wrap' }, [
+        ...(state.tagFilter ? [h('button', { class: 'badge badge-accent', onclick: () => { state.tagFilter = null; renderListOnly(); } }, `✕ ${state.tagFilter}`)] : []),
+        ...allTags.filter(t => t !== state.tagFilter).slice(0, 12).map(t => h('button', {
+          class: 'badge badge-gray', onclick: () => { state.tagFilter = t; renderListOnly(); },
+        }, `#${t}`)),
+      ]);
+      bar.appendChild(tagChips);
+    }
     return bar;
+  }
+
+  // Drag state lives for the whole mount lifetime; only the handle element is
+  // recreated per render, so the window-level listeners are wired up exactly
+  // once (in mount()) to avoid piling up duplicate listeners on every render.
+  let resizeDragging = false;
+  let currentListPanel = null;
+  function onResizeMouseMove(e) {
+    if (!resizeDragging || !currentListPanel) return;
+    const rect = rootEl.getBoundingClientRect();
+    state.listWidth = Math.max(220, Math.min(560, e.clientX - rect.left));
+    currentListPanel.style.width = `${state.listWidth}px`;
+  }
+  function onResizeMouseUp() {
+    if (!resizeDragging) return;
+    resizeDragging = false;
+    document.body.style.cursor = '';
+  }
+  function attachResizer(handle, listPanel) {
+    currentListPanel = listPanel;
+    handle.addEventListener('mousedown', e => {
+      resizeDragging = true;
+      e.preventDefault();
+      document.body.style.cursor = 'col-resize';
+    });
   }
 
   let listContainer, filterContainer;
@@ -316,10 +351,12 @@ export function createCollectionView(config) {
 
     filterContainer = renderFilters();
     listContainer = renderList();
-    const listPanel = h('div', { class: 'w-[320px] shrink-0 border-r border-surface-3/60 flex flex-col' }, [filterContainer, listContainer]);
+    const listPanel = h('div', { class: 'shrink-0 border-r border-surface-3/60 flex flex-col', style: `width:${state.listWidth}px` }, [filterContainer, listContainer]);
+    const resizeHandle = h('div', { class: 'w-1 shrink-0 cursor-col-resize hover:bg-accent/50 transition-colors', title: 'Drag to resize' });
+    attachResizer(resizeHandle, listPanel);
     const detailPanel = renderDetail();
 
-    const body = h('div', { class: 'flex flex-1 overflow-hidden' }, [listPanel, detailPanel]);
+    const body = h('div', { class: 'flex flex-1 overflow-hidden' }, [listPanel, resizeHandle, detailPanel]);
     rootEl.append(toolbar, body);
   }
 
@@ -330,7 +367,13 @@ export function createCollectionView(config) {
       if (opts.selectId) state.selectedId = opts.selectId;
       render();
       unsubscribe = store.on(() => render());
-      return () => { unsubscribe && unsubscribe(); };
+      window.addEventListener('mousemove', onResizeMouseMove);
+      window.addEventListener('mouseup', onResizeMouseUp);
+      return () => {
+        unsubscribe && unsubscribe();
+        window.removeEventListener('mousemove', onResizeMouseMove);
+        window.removeEventListener('mouseup', onResizeMouseUp);
+      };
     },
     select(id) { state.selectedId = id; render(); },
   };
