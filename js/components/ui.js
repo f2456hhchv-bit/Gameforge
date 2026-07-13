@@ -37,10 +37,15 @@ export function openModal(contentEl, { title, width = '560px', onClose } = {}) {
   function close() {
     backdrop.remove();
     panel.remove();
+    document.removeEventListener('keydown', onKeydown);
     modalStack.pop();
     onClose && onClose();
   }
+  function onKeydown(e) {
+    if (e.key === 'Escape') { e.stopPropagation(); close(); }
+  }
   backdrop.addEventListener('click', close);
+  document.addEventListener('keydown', onKeydown);
   modalRoot.append(backdrop, panel);
   modalStack.push(close);
   return { close, panel, body };
