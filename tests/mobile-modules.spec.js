@@ -32,7 +32,7 @@ async function checkNoOverflow(page, label) {
 
 const COLLECTION_MODULES = [
   'World Builder', 'Character Studio', 'Item Studio', 'Combat Designer',
-  'Level Designer', 'Quest Designer', 'Art Director', 'UI Designer', 'Audio Designer',
+  'Level Designer', 'Quest Designer', 'Art Director', 'UI Designer', 'Audio Designer', 'Achievements',
 ];
 
 test('collectionView modules: list view fits on mobile', async ({ page }) => {

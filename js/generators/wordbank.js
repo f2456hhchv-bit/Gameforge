@@ -271,3 +271,18 @@ export const STRATEGY_RESOURCE_TYPES = ['Food', 'Wood', 'Ore', 'Gold', 'Influenc
 export const FARMING_CROPS = ['Wheat', 'Pumpkin', 'Blueberry', 'Starfruit', 'Moon Melon', 'Silver Corn', 'Sunroot'];
 export const BATTLE_ROYALE_ZONES = ['Landing Docks', 'Crumbling Overpass', 'Signal Tower', 'Sunken District', 'Storm Wall Edge', 'Abandoned Bunker'];
 export const VISUAL_NOVEL_ARCS = ['A rivalry that becomes something else', 'A secret that threatens everyone\'s plans', 'A choice between duty and desire', 'An old promise coming due', 'A truth that changes who gets to stay'];
+
+export const ACHIEVEMENT_TITLES = [
+  'First Steps', 'No Stone Unturned', 'Against All Odds', 'The Long Way Round', 'Collector\'s Eye',
+  'Master of None', 'Perfectionist', 'Speed Demon', 'Pacifist Run', 'Completionist', 'One More Try',
+  'Legend in the Making', 'The Hard Way', 'Above and Beyond', 'Full Circle', 'Not Today', 'Untouchable',
+  'The Grind Never Stops', 'Hidden in Plain Sight', 'Worth the Wait', 'Overkill', 'Clean Sweep',
+  'By the Skin of Your Teeth', 'Down to the Wire', 'Nothing Left to Prove',
+];
+
+export const ACHIEVEMENT_CRITERIA_TEMPLATES = [
+  'Reach level {n} with any character.', 'Explore every region of the world.', 'Finish the game in under {n} hours.',
+  'Craft {n} items using rare materials.', 'Max out a relationship with any NPC.', 'Discover a secret ending.',
+  'Die {n} times to the same boss and still win.', 'Complete the game without changing equipment.',
+  'Collect every currency type at least once.', 'Finish a level without triggering any alarms.',
+];

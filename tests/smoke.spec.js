@@ -15,7 +15,7 @@ test.describe('App boot & shell', () => {
     const modules = [
       'Relationship Graph', 'Game Designer', 'World Builder', 'Character Studio', 'Item Studio',
       'Combat Designer', 'Level Designer', 'Quest Designer', 'Art Director', 'UI Designer',
-      'Audio Designer', 'Task Manager', 'Documentation',
+      'Audio Designer', 'Task Manager', 'Achievements', 'Documentation',
     ];
     for (const m of modules) {
       await openModule(page, m);

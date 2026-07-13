@@ -13,6 +13,7 @@ export const COLLECTIONS = {
   artPrompts: { label: 'Art Prompts', icon: '🎨', group: 'Art' },
   uiScreens: { label: 'UI Screens', icon: '🖥️', group: 'UI' },
   audioEntries: { label: 'Audio', icon: '🔊', group: 'Audio' },
+  achievements: { label: 'Achievements', icon: '🏆', group: 'Production' },
   tasks: { label: 'Tasks', icon: '✅', group: 'Production' },
   docs: { label: 'Documentation', icon: '📄', group: 'Production' },
   milestones: { label: 'Milestones', icon: '🏁', group: 'Production' },

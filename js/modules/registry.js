@@ -15,6 +15,7 @@ export const MODULES = [
   { key: 'ui', label: 'UI Designer', icon: '🖥️', group: 'Production', load: () => import('./uiDesigner.js').then(m => m.mountUIDesigner) },
   { key: 'audio', label: 'Audio Designer', icon: '🔊', group: 'Production', load: () => import('./audio.js').then(m => m.mountAudio) },
   { key: 'tasks', label: 'Task Manager', icon: '✅', group: 'Production', load: () => import('./tasks.js').then(m => m.mountTasks) },
+  { key: 'achievements', label: 'Achievements', icon: '🏆', group: 'Production', load: () => import('./achievements.js').then(m => m.mountAchievements) },
   { key: 'docs', label: 'Documentation', icon: '📄', group: 'Production', load: () => import('./docs.js').then(m => m.mountDocs) },
 ];
 

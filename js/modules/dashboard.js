@@ -12,7 +12,7 @@ import { SUBTYPES as QUEST_SUBTYPES } from './quests.js';
 
 const TASK_CATEGORIES = ['design', 'art', 'code', 'audio', 'writing', 'qa', 'general'];
 const STATUS_LABELS = { backlog: 'Backlog', todo: 'To Do', 'in-progress': 'In Progress', review: 'Review', done: 'Done' };
-const CONTENT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries'];
+const CONTENT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries', 'achievements'];
 
 function taskStatusBreakdown(tasks) {
   return TASK_STATUSES.map(s => ({ label: STATUS_LABELS[s], value: tasks.filter(t => t.status === s).length }));

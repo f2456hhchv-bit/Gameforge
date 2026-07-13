@@ -17,6 +17,7 @@ import { generateItem, generateLegendarySetItem, generateStarterLoadoutItem } fr
 import { generateLevel } from './levels.js';
 import { generateAbility } from './combat.js';
 import { generatePrompt } from './art.js';
+import { generateAchievement } from './achievements.js';
 import { generateScreen, SUBTYPES as UI_SUBTYPES } from './uiDesigner.js';
 import { generateAudio } from './audio.js';
 import { generateQuest, generateQuestChainEntry } from './quests.js';
@@ -55,6 +56,7 @@ const CONTENT_TYPES = [
   { keywords: ['ui screen', 'menu screen', 'hud'], collection: 'uiScreens', subtype: null, generate: (rng) => generateScreen(rng, UI_SUBTYPES[0].key), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
   { keywords: ['audio', 'sound', 'sfx', 'music track'], collection: 'audioEntries', subtype: null, generate: (rng) => generateAudio(rng, 'sfx'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
   { keywords: ['art prompt', 'concept art'], collection: 'artPrompts', subtype: 'concept', generate: (rng) => generatePrompt(rng, 'concept') },
+  { keywords: ['achievement', 'trophy', 'trophies'], collection: 'achievements', subtype: 'bronze', generate: (rng) => generateAchievement(rng, 'bronze'), taskFor: (i) => ({ category: 'design', estimateHours: 1, title: `Wire up unlock tracking: ${i.name}` }) },
 ];
 
 function extractCount(text, def = 1) {
@@ -173,7 +175,7 @@ const HELP_TEXT = `I'm a local command assistant — everything I do runs entire
 • "generate a quest chain" (a linked multi-stage story arc)
 • "suggest a genre mashup" (seeds a pillar + USP from a real, researched untried genre combination — see the Industry Research Brief in Documentation)
 
-I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues and art prompts — plus the themed multi-entity variants above.`;
+I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues, art prompts and achievements/trophies — plus the themed multi-entity variants above.`;
 
 function handleCommand(text) {
   const lower = text.toLowerCase().trim();
