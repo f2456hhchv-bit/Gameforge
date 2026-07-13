@@ -70,6 +70,21 @@ test.describe('Starter templates', () => {
     expect(errors).toEqual([]);
   });
 
+  test('all 5 additional research-backed hybrid templates seed without errors', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    const labels = [
+      'Living Farm', 'Simulated Siege', 'Settled Walking Sim',
+      "Duelist's Court", 'Annexed Frontier',
+    ];
+    for (const label of labels) {
+      await createProject(page, `${label} Test`, label);
+      const state = await projectState(page);
+      expect(state.counts.designDocs, `${label}: designDocs`).toBeGreaterThan(0);
+      expect(state.counts.quests, `${label}: quests`).toBeGreaterThan(0);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('Blank Project starts empty and records no undo step', async ({ page }) => {
     await createProject(page, 'Blank Template Test', 'Blank Project');
     const state = await projectState(page);

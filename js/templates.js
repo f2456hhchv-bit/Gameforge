@@ -735,4 +735,185 @@ export const TEMPLATES = [
       store.logActivity('Seeded project from the Co-op Soulslike starter pack', { icon: '✨' });
     },
   },
+  {
+    key: 'living-farm', label: 'Living Farm', icon: '🌾',
+    description: 'A researched-gap hybrid: systemic crop/weather/pest simulation with real emergent cause-and-effect chains, not scripted seasonal events.',
+    meta: { genre: 'Living Farm', platform: ['PC', 'Nintendo Switch'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('living-farm-' + Date.now());
+      const g = gap('Living Farm');
+      const crops = pickN(FARMING_CROPS, 4, rng);
+      seedPillar('The farm is a simulation, not a calendar', g.rationale);
+      seedPillar('One event has ripple effects, not a fixed script', `A drought doesn't just lower yields — it can drive pests toward the remaining healthy ${crops[0]}, which can spread disease if left unchecked.`);
+      seedCoreLoop(['Tend Crops', 'Watch for Emerging Systemic Events', 'Adapt Strategy in Real Time', 'Harvest', 'Reinvest in Land/Tools'], 'No two seasons play out the same way — weather, pests and disease genuinely interact rather than following a fixed calendar.', 15);
+      seedUSP(`A farming sim with a real simulation underneath the crops: ${g.rationale}`, [`Crops in rotation: ${crops.join(', ')}`, 'Emergent multi-step crises replace scripted seasonal events']);
+      seedDifficulty(['Standard', 'Chaotic Systems (faster-spreading events)'], 'Chaotic Systems mode speeds up how quickly pest/disease/weather chains cascade.');
+
+      const farm = seedPlace(rng, 'region');
+      const town = seedPlace(rng, 'city');
+
+      seedCharacter(rng, 'player', { name: 'The Steward' });
+      const neighbor = seedCharacter(rng, 'npc');
+      neighbor.links.spawnBiome = farm.id;
+      const pest = seedCharacter(rng, 'wildlife', { description: 'A pest species whose migration patterns respond to drought and neighboring crop health.' });
+      pest.links.spawnBiome = farm.id;
+
+      crops.forEach(name => {
+        const item = seedItem(rng, 'material');
+        item.name = name;
+        item.description = 'A harvestable crop whose yield depends on the current systemic state of the farm, not a fixed season.';
+      });
+      seedItem(rng, 'currency');
+
+      const mainQuest = seedQuest(rng, 'main', { name: 'Break the Chain' });
+      mainQuest.description = `A drought triggers a pest migration, which threatens to spread disease through the ${crops[0]} fields — stop the chain before it reaches the whole farm.`;
+      mainQuest.links.giver = neighbor.id;
+      mainQuest.links.location = farm.id;
+
+      seedQuest(rng, 'repeatable', { name: 'Seasonal Systems Check' }).links.location = farm.id;
+
+      store.logActivity('Seeded project from the Living Farm starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'simulated-siege', label: 'Simulated Siege', icon: '🏯',
+    description: 'A researched-gap hybrid: direct player control within a tower defense, with systemic environment interactions (fire spreads, terrain floods) instead of a top-down abstracted layer.',
+    meta: { genre: 'Simulated Siege', platform: ['PC', 'PlayStation', 'Xbox'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('simulated-siege-' + Date.now());
+      const g = gap('Simulated Siege');
+      const waves = pickN(TOWER_DEFENSE_ENEMY_WAVES, 3, rng);
+      seedPillar('You are inside the defense, not above it', g.rationale);
+      seedPillar('The battlefield reacts, it doesn\'t just get attacked', `Set the oil trenches alight and the fire spreads to nearby wooden barricades; flood the ford and ${waves[0]} units are forced onto the narrow bridge.`);
+      seedCoreLoop(['Command the Defense', 'Personally Fight the Breach', 'Trigger Environmental Reactions', 'Survive the Wave', 'Rebuild Before the Next One'], 'Every wave forces a direct, personal fight at the breach point in addition to defense management.', 14);
+      seedUSP(`A tower-defense game played from inside the siege, not above it: ${g.rationale}`, [`Wave types include: ${waves.join(', ')}`, 'Fire, flooding and terrain deformation are simulated, not scripted per-wave']);
+      seedDifficulty(['Standard', 'Full Siege (defenses take real structural damage)'], 'Full Siege mode lets repeated fire/flood damage permanently destroy defensive structures mid-run.');
+
+      const fortress = seedPlace(rng, 'region');
+      const enemies = waves.map(name => seedCharacter(rng, 'enemy', { name, description: `A ${name} unit attacking the siege.` }));
+      enemies.forEach(e => { e.links.spawnBiome = fortress.id; });
+      const siegeEngine = seedCharacter(rng, 'boss', { name: 'The Siege Engine' });
+      siegeEngine.links.spawnBiome = fortress.id;
+
+      seedItem(rng, 'currency');
+      seedItem(rng, 'material');
+
+      seedQuest(rng, 'main', { name: 'Hold the Fortress' }).links.location = fortress.id;
+
+      const level = seedLevel(rng, { layoutType: 'Arena' });
+      level.links = { biome: fortress.id, enemies: [...enemies.map(e => e.id), siegeEngine.id] };
+      level.proceduralRules = 'Fire, flooding and structural damage are simulated per-tile, not scripted per-wave; the same trench can be used for oil-fire or flooding depending on player choice.';
+
+      seedAbility(rng);
+      seedAbility(rng);
+      store.logActivity('Seeded project from the Simulated Siege starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'settled-walking-sim', label: 'Settled Walking Sim', icon: '🚶',
+    description: 'A researched-gap hybrid: slow, unhurried narrative-exploration pacing married to persistent base-building, entirely without combat or survival pressure.',
+    meta: { genre: 'Settled Walking Sim', platform: ['PC', 'Mobile (iOS)'], engine: 'Unity' },
+    apply: () => {
+      const rng = rngFor('settled-walking-sim-' + Date.now());
+      const g = gap('Settled Walking Sim');
+      seedPillar('There is nowhere to rush to', g.rationale);
+      seedPillar('The home you build is the only progression system', 'Every discovered story fragment can be brought home and placed — the home itself becomes the story, told through what you choose to keep.');
+      seedCoreLoop(['Walk and Explore Slowly', 'Discover a Story Fragment', 'Return Home', 'Build or Place Something New', 'Walk Further Next Time'], 'No fail states, no timers — the loop is paced entirely by curiosity.', 20);
+      seedUSP(`A walking sim where the base you build IS the narrative artifact: ${g.rationale}`, ['Zero combat, zero survival meters', 'Every placeable object corresponds to a specific discovered story beat']);
+      seedDifficulty(['Standard (no time pressure of any kind)'], 'There is only one mode — the whole premise is the absence of pressure.');
+
+      const region = seedPlace(rng, 'region');
+      const home = seedPlace(rng, 'biome');
+
+      seedCharacter(rng, 'player', { name: 'The Walker' });
+      const memory = seedCharacter(rng, 'npc', { description: 'A recurring figure from memory, encountered at key points along the walk rather than a quest giver in the traditional sense.' });
+      memory.links.spawnBiome = region.id;
+
+      const fragment = seedItem(rng, 'quest-item');
+      seedItem(rng, 'material');
+
+      const mainQuest = seedQuest(rng, 'main', { name: 'What the Walk Remembers' });
+      mainQuest.links.giver = memory.id;
+      mainQuest.links.location = region.id;
+      mainQuest.rewards = [fragment.id];
+      mainQuest.description = 'A slow walk through remembered places, each stop revealing a fragment to carry home.';
+
+      const level = seedLevel(rng, { layoutType: 'Open World' });
+      level.links = { biome: region.id };
+      level.objectives = ['Walk until something is found — there is no other objective'];
+
+      store.logActivity('Seeded project from the Settled Walking Sim starter pack', { icon: '✨' });
+    },
+  },
+  {
+    key: 'duelists-court', label: "Duelist's Court", icon: '⚔️',
+    description: "A researched-gap hybrid: CRPG-style party management and branching dialogue deciding WHICH character enters a real-time, style-ranked 1-on-1 duel — the party layer and the action layer share the same stakes.",
+    meta: { genre: "Duelist's Court", platform: ['PC', 'PlayStation'], engine: 'Unreal Engine' },
+    apply: () => {
+      const rng = rngFor('duelists-court-' + Date.now());
+      const g = gap("Duelist's Court");
+      seedPillar('The court decides who fights; the duel decides the court', g.rationale);
+      seedPillar('Every duel is scored, not just won', 'Style, timing and damage-avoidance are ranked mid-duel — a scraped-by victory shifts the court\'s opinion differently than a flawless one.');
+      seedCoreLoop(['Navigate Court Politics', 'Choose a Champion to Duel', 'Fight a Real-Time Style-Ranked Duel', 'Outcome Reshapes Standing', 'Return to the Court'], 'Every duel outcome (and its style rank) feeds directly back into which political options are open next.', 12);
+      seedUSP(`A game where CRPG party politics and character-action duels are one continuous system: ${g.rationale}`, ['Style ranking mid-duel, not just win/lose', 'Choosing who duels is as strategic as the duel itself']);
+      seedDifficulty(['Standard', 'True Duelist (no retries mid-duel)'], 'True Duelist mode removes the ability to retry a duel once it starts — the court remembers losses too.');
+
+      const court = seedPlace(rng, 'city');
+      const rivalFaction = seedFaction(rng);
+
+      seedCharacter(rng, 'player', { name: 'The Petitioner' });
+      const champion = seedCharacter(rng, 'companion', { description: 'A champion who can be sent into court duels on the player\'s behalf.' });
+      champion.links.spawnBiome = court.id;
+      const rivalChampion = seedCharacter(rng, 'boss', { name: `${rivalFaction.name} Champion` });
+      rivalChampion.links.spawnBiome = court.id;
+
+      const weapons = Array.from({ length: 2 }, () => seedItem(rng, 'weapon'));
+      seedItem(rng, 'currency');
+      rivalChampion.links.drops = [weapons[0].id];
+
+      seedQuest(rng, 'faction', { name: `Challenge ${rivalFaction.name}` }).links.location = court.id;
+
+      const arena = seedLevel(rng, { layoutType: 'Arena' });
+      arena.links = { biome: court.id, enemies: [rivalChampion.id], lootTable: weapons.map(w => w.id) };
+
+      seedAbility(rng);
+      seedAbility(rng);
+      store.logActivity("Seeded project from the Duelist's Court starter pack", { icon: '✨' });
+    },
+  },
+  {
+    key: 'metroidvania-empire', label: 'Annexed Frontier', icon: '🗺️',
+    description: 'A researched-gap hybrid: the Metroidvania map IS the empire\'s territory — new traversal abilities annex strategic resource zones directly into the player\'s empire-level economy.',
+    meta: { genre: 'Metroidvania Empire', platform: ['PC', 'Nintendo Switch'], engine: 'Godot' },
+    apply: () => {
+      const rng = rngFor('metroidvania-empire-' + Date.now());
+      const g = gap('Metroidvania Empire');
+      const resources = pickN(STRATEGY_RESOURCE_TYPES, 3, rng);
+      seedPillar('Exploration IS expansion', g.rationale);
+      seedPillar('Every ability is also an annexation', `Gaining the ability to swim doesn't just open a new room — it annexes a ${resources[0]}-rich wetland region directly into your empire's economy.`);
+      seedCoreLoop(['Explore Until Blocked', 'Gain a New Traversal Ability', 'Annex the Newly Reachable Territory', 'Manage the Growing Empire\'s Resources', 'Push Further'], 'Every ability unlock is simultaneously a map-traversal gain and an empire-economy gain.', 16);
+      seedUSP(`A Metroidvania where the map and the empire are the same system: ${g.rationale}`, [`Empire resources tracked: ${resources.join(', ')}`, 'No separate "strategy screen" — the interconnected map is the economy']);
+      seedDifficulty(['Explorer', 'Standard', 'Contested (rival empire also expands)'], 'Contested mode adds a rival empire racing to annex the same unexplored regions.');
+
+      const homeland = seedPlace(rng, 'region');
+      const frontier = seed('biomes', generateContinent(rng, 'region'), { subtype: 'region' });
+
+      seedCharacter(rng, 'player', { name: 'The Cartographer-Sovereign' });
+      const guardian = seedCharacter(rng, 'boss', { description: 'Guards the ability-gated passage into the next annexable territory.' });
+      guardian.links.spawnBiome = frontier.id;
+      const wildlife = seedCharacter(rng, 'wildlife');
+      wildlife.links.spawnBiome = homeland.id;
+
+      resources.forEach(() => seedItem(rng, 'currency'));
+      const relic = seedItem(rng, 'quest-item');
+      guardian.links.drops = [relic.id];
+
+      seedQuest(rng, 'main', { name: `Annex ${frontier.name}` }).links.location = frontier.id;
+
+      const level = seedLevel(rng, { layoutType: 'Metroidvania' });
+      level.links = { biome: homeland.id, enemies: [wildlife.id] };
+
+      store.logActivity('Seeded project from the Metroidvania Empire starter pack', { icon: '✨' });
+    },
+  },
 ];
