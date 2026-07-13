@@ -10,7 +10,7 @@ No build step is required to use the app — it's static HTML/CSS/JS.
 npm run serve       # serves the app at http://localhost:8080 (any static server works)
 ```
 
-Then open `http://localhost:8080/index.html`. You can also open `index.html` directly via `file://` in most browsers (IndexedDB works fine there).
+Then open `http://localhost:8080/index.html`. Note: opening `index.html` directly via `file://` does **not** work in this multi-file form — browsers block `<script type="module">` from importing other files across a `file://` origin, so `js/app.js`'s imports fail with a CORS error. Use a static server (`npm run serve`, or any other), or see [Distributing it to other people](#distributing-it-to-other-people) below for a version that does work from a double-clicked file.
 
 ## Modules
 
@@ -35,6 +35,19 @@ Everything is linked: characters reference biomes and drop items, levels referen
 ## Starter templates
 
 Creating a project (first run, or "+ New Project") offers a template picker: **Fantasy Action RPG**, **Sci-Fi Shooter**, **Metroidvania**, **Cozy Life Sim**, or **Blank Project**. Each non-blank template seeds real, cross-linked pillars, world, characters, items, a quest chain and a level in one step — a genuine starting point, not placeholder text. Picking a template is a single undo step (Ctrl+Z returns to blank).
+
+## Distributing it to other people
+
+Two supported ways to hand this to someone who isn't cloning the repo themselves — pick based on whether they should get a URL or a file:
+
+**Hosted (a URL, recommended for most cases).** Pushing to this repo deploys automatically via `.github/workflows/deploy-pages.yml` once GitHub Pages is turned on (one-time: repo Settings → Pages → Source: "GitHub Actions"). Whoever you send the link to just opens it — nothing to install, works on any device, always up to date with the latest push. The one thing to know: each visitor's projects live in *their own browser's* IndexedDB — there's no shared/synced data between people, so this is "everyone gets their own copy of the tool," not "a team share one project."
+
+**Standalone file (an .html file, for offline/no-hosting use).** `npm run build:standalone` bundles the entire app — every JS module, the compiled CSS, and the vendored JSZip — into one self-contained `gameforge-standalone.html` (via esbuild, ~290 KB). Unlike the plain `index.html`, this one really does work opened straight from disk (double-click, email attachment, USB stick, no server) because the bundler removes the `type="module"` imports that `file://` blocks. Regenerate it any time after changing the app:
+
+```bash
+npm install
+npm run build:standalone   # writes ./gameforge-standalone.html
+```
 
 ## Exports
 
