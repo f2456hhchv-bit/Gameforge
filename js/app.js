@@ -1,4 +1,4 @@
-import { h, uid, debounce, timeAgo } from './util.js';
+import { h, uid, debounce, timeAgo, download } from './util.js';
 import { DB } from './db.js';
 import { store } from './store.js';
 import { MODULES, resolveModuleKey, getModule } from './modules/registry.js';
@@ -147,12 +147,47 @@ function renderTopbar() {
 
   const themeBtn = h('button', { class: 'btn-icon', title: 'Toggle dark mode', onclick: toggleTheme }, document.documentElement.classList.contains('dark') ? '☀️' : '🌙');
   const searchBtn = h('button', { class: 'btn-secondary text-xs text-slate-400', onclick: openCommandPalette }, ['🔍 Search…', h('kbd', { class: 'ml-2 text-[10px] bg-surface-2 px-1.5 py-0.5 rounded' }, 'Ctrl K')]);
+  const backupBtn = h('button', { class: 'btn-icon', title: 'Backup / restore project (JSON)', onclick: openBackupMenu }, '⋮');
 
   bar.append(
     h('div', { class: 'flex items-center gap-1' }, [projSwitch]),
     h('div', { class: 'flex-1 flex justify-center' }, [searchBtn]),
-    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn]),
+    h('div', { class: 'flex items-center gap-1' }, [saveIndicator, undoBtn, redoBtn, themeBtn, backupBtn]),
   );
+}
+
+function openBackupMenu() {
+  const fileInput = h('input', { type: 'file', accept: 'application/json', class: 'hidden' });
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const project = JSON.parse(text);
+      if (!project.id || !project.collections) throw new Error('Not a valid GameForge project file.');
+      project.id = uid('proj'); // avoid clobbering an existing record with the same id
+      await DB.saveProject(project);
+      await DB.setSetting('lastActiveProjectId', project.id);
+      closeTopModal();
+      await store.load(project.id);
+      resetShellForProject();
+      toast('Project imported', { type: 'success' });
+    } catch (err) {
+      toast(`Import failed: ${err.message}`, { type: 'error' });
+    }
+  });
+  const content = h('div', { class: 'flex flex-col gap-3' }, [
+    h('button', {
+      class: 'btn-secondary justify-start', onclick: () => {
+        download(`${store.project.name.replace(/[^a-z0-9]+/gi, '-')}.json`, JSON.stringify(store.project, null, 2), 'application/json');
+        closeTopModal();
+      },
+    }, '⬇ Export Project (JSON backup)'),
+    h('button', { class: 'btn-secondary justify-start', onclick: () => fileInput.click() }, '⬆ Import Project (JSON backup)'),
+    fileInput,
+    h('p', { class: 'text-xs text-slate-400' }, 'Backups contain everything — every character, item, biome, task and document. Great for switching devices or keeping a snapshot before a big change.'),
+  ]);
+  openModal(content, { title: 'Project Backup', width: '420px' });
 }
 
 function updateSaveIndicator(reason) {

@@ -249,7 +249,8 @@ export function createCollectionView(config) {
     }
     redrawTags();
 
-    const formGrid = buildForm(fields, item);
+    const activeFields = typeof fields === 'function' ? fields(item.subtype) : fields;
+    const formGrid = buildForm(activeFields, item);
 
     const backlinks = store.backlinks(item.id);
     const backlinksSection = backlinks.length ? h('div', { class: 'flex flex-col gap-1.5' }, [
