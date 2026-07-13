@@ -4,6 +4,7 @@ import { store } from './store.js';
 import { MODULES, resolveModuleKey, getModule } from './modules/registry.js';
 import { setNavigationHandler } from './router.js';
 import { openModal, closeTopModal, toast, promptModal, confirmModal } from './components/ui.js';
+import { COLLECTIONS } from './schema.js';
 
 const root = document.getElementById('app');
 
@@ -265,19 +266,51 @@ function toggleTheme() {
   renderTopbar();
 }
 
+const SEARCHABLE_COLLECTIONS = Object.keys(COLLECTIONS).filter(k => !['activityLog', 'assistantLog'].includes(k));
+
+function searchEntities(term) {
+  if (!term.trim() || !store.project) return [];
+  const lower = term.toLowerCase();
+  const results = [];
+  for (const key of SEARCHABLE_COLLECTIONS) {
+    for (const item of store.list(key)) {
+      const name = item.name || item.title || '';
+      if (name.toLowerCase().includes(lower)) results.push({ collection: key, item, name });
+      if (results.length >= 40) return results;
+    }
+  }
+  return results;
+}
+
 function openCommandPalette() {
-  const input = h('input', { class: 'input text-base', placeholder: 'Jump to a module… or type "new" to create an item' });
-  const results = h('div', { class: 'flex flex-col gap-0.5 mt-3 max-h-[360px] overflow-y-auto' });
+  const input = h('input', { class: 'input text-base', placeholder: 'Search modules or any character, item, quest, level…' });
+  const results = h('div', { class: 'flex flex-col gap-0.5 mt-3 max-h-[420px] overflow-y-auto' });
   function draw(term = '') {
     results.innerHTML = '';
-    const items = MODULES.filter(m => m.label.toLowerCase().includes(term.toLowerCase()));
-    items.forEach(m => results.appendChild(h('div', {
+    const modules = MODULES.filter(m => m.label.toLowerCase().includes(term.toLowerCase()));
+    modules.forEach(m => results.appendChild(h('div', {
       class: 'ctx-menu-item', onclick: () => { closeTopModal(); openTab(m.key); },
     }, [h('span', {}, m.icon), h('span', {}, m.label)])));
+
+    const entities = searchEntities(term).slice(0, 20);
+    if (entities.length) {
+      results.appendChild(h('div', { class: 'nav-group-label' }, 'Entities'));
+      entities.forEach(({ collection, item, name }) => results.appendChild(h('div', {
+        class: 'ctx-menu-item',
+        onclick: () => { closeTopModal(); openTab(resolveModuleKey(collection), item.id); },
+      }, [
+        h('span', {}, COLLECTIONS[collection]?.icon || '•'),
+        h('span', { class: 'flex-1 truncate' }, name),
+        h('span', { class: 'text-xs text-slate-400 shrink-0' }, COLLECTIONS[collection]?.label),
+      ])));
+    }
+    if (!modules.length && !entities.length && term.trim()) {
+      results.appendChild(h('p', { class: 'text-sm text-slate-400 px-2 py-3' }, `No matches for "${term}".`));
+    }
   }
   input.addEventListener('input', () => draw(input.value));
   draw();
-  openModal(h('div', {}, [input, results]), { title: 'Command Palette', width: '480px' });
+  openModal(h('div', {}, [input, results]), { title: 'Search', width: '520px' });
   setTimeout(() => input.focus(), 30);
 }
 

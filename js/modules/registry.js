@@ -9,6 +9,7 @@ export const MODULES = [
   { key: 'items', label: 'Item Studio', icon: '🗡️', group: 'Design', load: () => import('./items.js').then(m => m.mountItems) },
   { key: 'combat', label: 'Combat Designer', icon: '⚔️', group: 'Design', load: () => import('./combat.js').then(m => m.mountCombat) },
   { key: 'levels', label: 'Level Designer', icon: '🗺️', group: 'Design', load: () => import('./levels.js').then(m => m.mountLevels) },
+  { key: 'quests', label: 'Quest Designer', icon: '📯', group: 'Design', load: () => import('./quests.js').then(m => m.mountQuests) },
   { key: 'art', label: 'Art Director', icon: '🎨', group: 'Production', load: () => import('./art.js').then(m => m.mountArt) },
   { key: 'ui', label: 'UI Designer', icon: '🖥️', group: 'Production', load: () => import('./uiDesigner.js').then(m => m.mountUIDesigner) },
   { key: 'audio', label: 'Audio Designer', icon: '🔊', group: 'Production', load: () => import('./audio.js').then(m => m.mountAudio) },

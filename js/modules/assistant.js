@@ -3,50 +3,54 @@
 // real mutations through the same store/generator functions the UI modules
 // use, so "generate 50 weapons" in chat does exactly what the Item Studio
 // generator button does. Conversation history is persisted per-project.
-import { h, uid, timeAgo } from '../util.js';
+import { h, uid, timeAgo, pick } from '../util.js';
 import { store } from '../store.js';
 import { toast } from '../components/ui.js';
-import { openEntity } from '../router.js';
 import { COLLECTIONS } from '../schema.js';
-import { rngFor, generateBiomeLore, generateQuestName, statBlockForLevel } from '../generators/procedural.js';
-import { BIOME_TYPES, QUEST_VERBS, QUEST_TARGETS } from '../generators/wordbank.js';
-import { pick } from '../util.js';
+import { rngFor, generateBiomeLore, statBlockForLevel } from '../generators/procedural.js';
+import { BIOME_TYPES } from '../generators/wordbank.js';
+import { autoTask } from '../taskHooks.js';
 
-import { generatePlace, generateFaction, SUBTYPES as WORLD_SUBTYPES } from './world.js';
-import { generateCharacter, SUBTYPES as CHARACTER_SUBTYPES } from './characters.js';
-import { generateItem, SUBTYPES as ITEM_SUBTYPES } from './items.js';
+import { generatePlace, generateFaction } from './world.js';
+import { generateCharacter } from './characters.js';
+import { generateItem } from './items.js';
 import { generateLevel } from './levels.js';
 import { generateAbility } from './combat.js';
-import { generatePrompt, SUBTYPES as ART_SUBTYPES } from './art.js';
+import { generatePrompt } from './art.js';
 import { generateScreen, SUBTYPES as UI_SUBTYPES } from './uiDesigner.js';
-import { generateAudio, SUBTYPES as AUDIO_SUBTYPES } from './audio.js';
+import { generateAudio } from './audio.js';
+import { generateQuest } from './quests.js';
 
 // Ordered most-specific-first so e.g. "weapon" matches before generic "item".
+// `taskFor` mirrors the onCreate hook each module's own UI wires into
+// collectionView, so a chat-generated entity gets exactly the same
+// auto-created production task as one made through the module's own button.
 const CONTENT_TYPES = [
-  { keywords: ['weapon'], collection: 'items', subtype: 'weapon', generate: (rng) => generateItem(rng, 'weapon') },
-  { keywords: ['armor', 'armour'], collection: 'items', subtype: 'armor', generate: (rng) => generateItem(rng, 'armor') },
-  { keywords: ['accessor'], collection: 'items', subtype: 'accessory', generate: (rng) => generateItem(rng, 'accessory') },
-  { keywords: ['consumable', 'potion'], collection: 'items', subtype: 'consumable', generate: (rng) => generateItem(rng, 'consumable') },
-  { keywords: ['material', 'resource'], collection: 'items', subtype: 'material', generate: (rng) => generateItem(rng, 'material') },
-  { keywords: ['currency', 'currencies'], collection: 'items', subtype: 'currency', generate: (rng) => generateItem(rng, 'currency') },
-  { keywords: ['item'], collection: 'items', subtype: 'weapon', generate: (rng) => generateItem(rng, 'weapon') },
-  { keywords: ['boss'], collection: 'characters', subtype: 'boss', generate: (rng) => generateCharacter(rng, 'boss') },
-  { keywords: ['enem'], collection: 'characters', subtype: 'enemy', generate: (rng) => generateCharacter(rng, 'enemy') },
-  { keywords: ['npc'], collection: 'characters', subtype: 'npc', generate: (rng) => generateCharacter(rng, 'npc') },
-  { keywords: ['companion'], collection: 'characters', subtype: 'companion', generate: (rng) => generateCharacter(rng, 'companion') },
-  { keywords: ['merchant', 'vendor'], collection: 'characters', subtype: 'merchant', generate: (rng) => generateCharacter(rng, 'merchant') },
-  { keywords: ['wildlife', 'creature', 'animal'], collection: 'characters', subtype: 'wildlife', generate: (rng) => generateCharacter(rng, 'wildlife') },
-  { keywords: ['character'], collection: 'characters', subtype: 'npc', generate: (rng) => generateCharacter(rng, 'npc') },
-  { keywords: ['faction'], collection: 'biomes', subtype: 'faction', generate: (rng) => generateFaction(rng) },
-  { keywords: ['biome'], collection: 'biomes', subtype: 'biome', generate: (rng) => generatePlace(rng, 'biome') },
-  { keywords: ['region'], collection: 'biomes', subtype: 'region', generate: (rng) => generatePlace(rng, 'region') },
-  { keywords: ['city', 'cities'], collection: 'biomes', subtype: 'city', generate: (rng) => generatePlace(rng, 'city') },
-  { keywords: ['planet'], collection: 'biomes', subtype: 'planet', generate: (rng) => generatePlace(rng, 'planet') },
-  { keywords: ['galax'], collection: 'biomes', subtype: 'galaxy', generate: (rng) => generatePlace(rng, 'galaxy') },
-  { keywords: ['level', 'dungeon'], collection: 'levels', subtype: null, generate: (rng) => generateLevel(rng) },
-  { keywords: ['ability', 'abilities'], collection: 'combatEntries', subtype: 'ability', generate: (rng) => generateAbility(rng) },
-  { keywords: ['ui screen', 'menu screen', 'hud'], collection: 'uiScreens', subtype: null, generate: (rng) => generateScreen(rng, UI_SUBTYPES[0].key) },
-  { keywords: ['audio', 'sound', 'sfx', 'music track'], collection: 'audioEntries', subtype: null, generate: (rng) => generateAudio(rng, 'sfx') },
+  { keywords: ['weapon'], collection: 'items', subtype: 'weapon', generate: (rng) => generateItem(rng, 'weapon'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['armor', 'armour'], collection: 'items', subtype: 'armor', generate: (rng) => generateItem(rng, 'armor'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['accessor'], collection: 'items', subtype: 'accessory', generate: (rng) => generateItem(rng, 'accessory'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['consumable', 'potion'], collection: 'items', subtype: 'consumable', generate: (rng) => generateItem(rng, 'consumable'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['material', 'resource'], collection: 'items', subtype: 'material', generate: (rng) => generateItem(rng, 'material'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['currency', 'currencies'], collection: 'items', subtype: 'currency', generate: (rng) => generateItem(rng, 'currency'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['item'], collection: 'items', subtype: 'weapon', generate: (rng) => generateItem(rng, 'weapon'), taskFor: (i) => ({ category: 'art', estimateHours: 2, title: `Create icon/model art: ${i.name}` }) },
+  { keywords: ['boss'], collection: 'characters', subtype: 'boss', generate: (rng) => generateCharacter(rng, 'boss'), taskFor: (i) => ({ category: 'art', estimateHours: 12, difficulty: 'hard', title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['enem'], collection: 'characters', subtype: 'enemy', generate: (rng) => generateCharacter(rng, 'enemy'), taskFor: (i) => ({ category: 'art', estimateHours: 5, title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['npc'], collection: 'characters', subtype: 'npc', generate: (rng) => generateCharacter(rng, 'npc'), taskFor: (i) => ({ category: 'art', estimateHours: 5, title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['companion'], collection: 'characters', subtype: 'companion', generate: (rng) => generateCharacter(rng, 'companion'), taskFor: (i) => ({ category: 'art', estimateHours: 5, title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['merchant', 'vendor'], collection: 'characters', subtype: 'merchant', generate: (rng) => generateCharacter(rng, 'merchant'), taskFor: (i) => ({ category: 'art', estimateHours: 5, title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['wildlife', 'creature', 'animal'], collection: 'characters', subtype: 'wildlife', generate: (rng) => generateCharacter(rng, 'wildlife'), taskFor: (i) => ({ category: 'art', estimateHours: 5, title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['character'], collection: 'characters', subtype: 'npc', generate: (rng) => generateCharacter(rng, 'npc'), taskFor: (i) => ({ category: 'art', estimateHours: 5, title: `Model, rig & animate: ${i.name}` }) },
+  { keywords: ['faction'], collection: 'biomes', subtype: 'faction', generate: (rng) => generateFaction(rng), taskFor: (i) => ({ category: 'design', estimateHours: 3, title: `Build out: ${i.name}` }) },
+  { keywords: ['biome'], collection: 'biomes', subtype: 'biome', generate: (rng) => generatePlace(rng, 'biome'), taskFor: (i) => ({ category: 'design', estimateHours: 6, title: `Build out: ${i.name}` }) },
+  { keywords: ['region'], collection: 'biomes', subtype: 'region', generate: (rng) => generatePlace(rng, 'region'), taskFor: (i) => ({ category: 'design', estimateHours: 6, title: `Build out: ${i.name}` }) },
+  { keywords: ['city', 'cities'], collection: 'biomes', subtype: 'city', generate: (rng) => generatePlace(rng, 'city'), taskFor: (i) => ({ category: 'design', estimateHours: 6, title: `Build out: ${i.name}` }) },
+  { keywords: ['planet'], collection: 'biomes', subtype: 'planet', generate: (rng) => generatePlace(rng, 'planet'), taskFor: (i) => ({ category: 'design', estimateHours: 6, title: `Build out: ${i.name}` }) },
+  { keywords: ['galax'], collection: 'biomes', subtype: 'galaxy', generate: (rng) => generatePlace(rng, 'galaxy'), taskFor: (i) => ({ category: 'design', estimateHours: 6, title: `Build out: ${i.name}` }) },
+  { keywords: ['quest'], collection: 'quests', subtype: 'side', generate: (rng) => generateQuest(rng, 'side'), taskFor: (i) => ({ category: 'writing', estimateHours: 5, title: `Write & implement quest: ${i.name}` }) },
+  { keywords: ['level', 'dungeon'], collection: 'levels', subtype: null, generate: (rng) => generateLevel(rng), taskFor: (i) => ({ category: 'design', estimateHours: 10, title: `Build level: ${i.name}` }) },
+  { keywords: ['ability', 'abilities'], collection: 'combatEntries', subtype: 'ability', generate: (rng) => generateAbility(rng), taskFor: (i) => ({ category: 'code', estimateHours: 3, title: `Implement: ${i.name}` }) },
+  { keywords: ['ui screen', 'menu screen', 'hud'], collection: 'uiScreens', subtype: null, generate: (rng) => generateScreen(rng, UI_SUBTYPES[0].key), taskFor: (i) => ({ category: 'code', estimateHours: 4, title: `Implement UI screen: ${i.name}` }) },
+  { keywords: ['audio', 'sound', 'sfx', 'music track'], collection: 'audioEntries', subtype: null, generate: (rng) => generateAudio(rng, 'sfx'), taskFor: (i) => ({ category: 'audio', estimateHours: 2, title: `Produce audio: ${i.name}` }) },
   { keywords: ['art prompt', 'concept art'], collection: 'artPrompts', subtype: 'concept', generate: (rng) => generatePrompt(rng, 'concept') },
 ];
 
@@ -69,6 +73,7 @@ function runBulkGenerate(ct, count) {
     const partial = ct.generate(rng) || {};
     const item = { id: uid(ct.collection), tags: [], links: {}, description: '', ...partial, subtype: ct.subtype || partial.subtype };
     store.project.collections[ct.collection].push(item);
+    if (ct.taskFor) autoTask(ct.collection, item, ct.taskFor(item));
     created.push(item);
   }
   store.commit(`Assistant: generate ${count} ${COLLECTIONS[ct.collection].label}`);
@@ -87,23 +92,6 @@ function rebalanceEnemies() {
   store.commit('Assistant: rebalance enemy stat blocks');
   store.logActivity(`Assistant rebalanced ${combatChars.length} combat characters' stat blocks by level`, { icon: '🤖' });
   return { changed: combatChars.length };
-}
-
-function createQuests(count) {
-  store.snapshot();
-  const created = [];
-  for (let i = 0; i < count; i++) {
-    const rng = rngFor(Math.random() + i);
-    const title = `Quest: ${generateQuestName(rng)}`;
-    const task = store.addTask({
-      title, category: 'design', priority: 'medium', status: 'backlog', difficulty: 'medium', estimateHours: 4,
-      description: `${pick(QUEST_VERBS, rng)} ${pick(QUEST_TARGETS, rng)}. Drafted by the assistant — flesh out objectives, dialogue and rewards.`,
-    });
-    created.push(task);
-  }
-  store.commit(`Assistant: draft ${count} quests`);
-  store.logActivity(`Assistant drafted ${count} quest tasks`, { icon: '🤖' });
-  return created;
 }
 
 function improveProgression() {
@@ -145,13 +133,12 @@ function rewriteLore() {
 
 const HELP_TEXT = `I'm a local command assistant — everything I do runs entirely in your browser, no external AI service involved. Try things like:
 
-• "generate 50 weapons" / "generate 10 enemies" / "create a new biome"
+• "generate 50 weapons" / "generate 10 enemies" / "create a new biome" / "generate 5 quests"
 • "balance these enemies" (rescales enemy/boss stat blocks by level)
-• "create quests" / "generate 5 quests" (drafts quest tasks in Task Manager)
 • "improve progression" (updates the Difficulty doc + adds a task)
 • "rewrite the lore" (regenerates lore for every world entry)
 
-I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, levels, abilities, UI screens, audio cues and art prompts.`;
+I can generate: weapons, armour, accessories, consumables, materials, currencies, enemies, bosses, NPCs, companions, merchants, wildlife, biomes, regions, cities, planets, galaxies, factions, quests, levels, abilities, UI screens, audio cues and art prompts.`;
 
 function handleCommand(text) {
   const lower = text.toLowerCase().trim();
@@ -162,11 +149,6 @@ function handleCommand(text) {
   if (/\bbalance\b/.test(lower) && /(enem|boss|combat)/.test(lower)) {
     const { changed } = rebalanceEnemies();
     return changed ? `Rebalanced stat blocks for ${changed} enemy/boss/wildlife characters based on their level. Open Character Studio to review.` : "You don't have any enemies, bosses or wildlife yet — generate some in Character Studio first.";
-  }
-  if (/\bquest/.test(lower)) {
-    const count = extractCount(lower);
-    const tasks = createQuests(count);
-    return `Drafted ${tasks.length} quest task${tasks.length > 1 ? 's' : ''} in the Task Manager:\n${tasks.map(t => `• ${t.title}`).join('\n')}`;
   }
   if (/\bprogression\b/.test(lower) && /(improve|better|tune|fix)/.test(lower)) {
     improveProgression();

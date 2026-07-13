@@ -9,6 +9,7 @@ export const COLLECTIONS = {
   items: { label: 'Items', icon: '🗡️', group: 'Items' },
   combatEntries: { label: 'Combat Systems', icon: '⚔️', group: 'Combat' },
   levels: { label: 'Levels', icon: '🗺️', group: 'Levels' },
+  quests: { label: 'Quests', icon: '📯', group: 'Quests' },
   artPrompts: { label: 'Art Prompts', icon: '🎨', group: 'Art' },
   uiScreens: { label: 'UI Screens', icon: '🖥️', group: 'UI' },
   audioEntries: { label: 'Audio', icon: '🔊', group: 'Audio' },

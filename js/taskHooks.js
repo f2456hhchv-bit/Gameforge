@@ -4,8 +4,9 @@
 import { store } from './store.js';
 
 export function autoTask(collectionKey, item, opts = {}) {
+  const title = typeof opts.title === 'function' ? opts.title(item) : (opts.title || `Implement: ${item.name}`);
   store.addTask({
-    title: opts.title ? opts.title(item) : `Implement: ${item.name}`,
+    title,
     category: opts.category || 'general',
     priority: opts.priority || 'medium',
     estimateHours: opts.estimateHours ?? 2,

@@ -41,6 +41,7 @@ ${section('Player Personas', personas.map(p => `**${p.name}** (${p.age || '?'}, 
 ${section('World Overview', list('biomes').map(b => `- **${b.name}**: ${b.description || ''}`).join('\n'))}
 ${section('Characters', list('characters').map(c => `- **${c.name}** (${c.subtype}): ${c.description || ''}`).join('\n'))}
 ${section('Items & Economy', list('items').map(i => `- **${i.name}** (${i.subtype}, ${i.rarity || 'Common'}): ${i.description || ''}`).join('\n'))}
+${section('Quests', list('quests').map(q => `- **${q.name}** (${q.subtype}): ${q.description || ''}`).join('\n'))}
 ${section('Levels', list('levels').map(l => `- **${l.name}**: ${l.description || ''}`).join('\n'))}
 `;
 }
@@ -82,13 +83,17 @@ ${section('Mixing Notes', audio.map(a => a.mixingNotes).filter(Boolean).join('\n
 }
 
 function genLoreBible(project) {
-  const biomes = list('biomes');
-  const factions = biomes.flatMap(b => b.factions || []);
+  const biomes = list('biomes').filter(b => b.subtype !== 'faction');
+  const factionEntries = list('biomes').filter(b => b.subtype === 'faction');
+  const mentionedFactions = [...new Set(biomes.flatMap(b => b.factionsPresent || []))];
   return `# ${project.name} — Lore Bible
 
 ${section('World History', biomes.map(b => `**${b.name}**: ${b.lore || b.description || ''}`).join('\n\n'))}
-${section('Factions', [...new Set(factions)].map(f => `- ${f}`).join('\n'))}
+${section('Factions', factionEntries.length
+    ? factionEntries.map(f => `**${f.name}** — ${f.ideology || f.description || ''}`).join('\n\n')
+    : bulletList(mentionedFactions))}
 ${section('Characters & Their Stories', list('characters').filter(c => c.biography).map(c => `**${c.name}**\n\n${c.biography}`).join('\n\n'))}
+${section('Quest Narratives', list('quests').filter(q => q.dialogue).map(q => `**${q.name}**\n\n${q.dialogue}`).join('\n\n'))}
 `;
 }
 
@@ -160,8 +165,8 @@ function genQADoc(project) {
   return `# ${project.name} — QA Document
 
 ${section('QA Task Checklist', tasks.map(t => `- [${t.status === 'done' ? 'x' : ' '}] ${t.title}`).join('\n'))}
-${section('Known Systems to Verify', bulletList([...list('combatEntries').map(c => c.name), ...list('levels').map(l => `${l.name} (level flow)`)]))}
-${section('Regression Checklist', bulletList(['Save/Load integrity', 'Core loop end-to-end', 'All menus reachable via keyboard/controller', 'No blocking soft-locks in any level']))}
+${section('Known Systems to Verify', bulletList([...list('combatEntries').map(c => c.name), ...list('levels').map(l => `${l.name} (level flow)`), ...list('quests').map(q => `${q.name} (quest completion, all branches)`)]))}
+${section('Regression Checklist', bulletList(['Save/Load integrity', 'Core loop end-to-end', 'All menus reachable via keyboard/controller', 'No blocking soft-locks in any level', 'All quest branches resolve without dead-ends']))}
 `;
 }
 
