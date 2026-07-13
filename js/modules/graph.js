@@ -260,6 +260,6 @@ export function mountGraph(container) {
 
   render();
   window.addEventListener('pointerup', onWindowPointerUp);
-  const unsub = store.on((project, reason) => { if (reason.startsWith('mutate') || reason === 'load') render(); });
+  const unsub = store.on((project, reason) => { if (reason.startsWith('mutate') || reason === 'undo' || reason === 'redo' || reason === 'load') render(); });
   return () => { unsub(); window.removeEventListener('pointerup', onWindowPointerUp); };
 }

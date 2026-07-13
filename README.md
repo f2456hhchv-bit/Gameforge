@@ -24,11 +24,17 @@ Then open `http://localhost:8080/index.html`. You can also open `index.html` dir
 - **Art Director** — production-ready image-AI prompts (style/lighting/palette/camera/materials/scale/mood/animation/transparency/export format). Never generates images itself.
 - **UI Designer** — menus, HUD, inventory, settings, skill trees, popups with accessibility and controller support notes.
 - **Audio Designer** — music, SFX, ambience, voice direction, triggers and mixing notes.
+- **Quest Designer** — main/side/faction/world-event/repeatable quests with stages, dialogue, branching, failure conditions, rewards and prerequisite chains.
 - **Task Manager** — kanban board + list view; every generated asset automatically creates a linked production task.
-- **Documentation** — GDD, TDD, Art/Audio/Lore Bibles, coding & asset-naming standards, folder structure, production plan, QA doc, release/patch notes — all generated live from the project database.
+- **Documentation** — GDD, TDD, Art/Audio/Lore Bibles, coding & asset-naming standards, folder structure, production plan, QA doc, release/patch notes — all generated live from the project database, plus a one-click "Compile Master Document" that stitches all of them into one exportable file.
+- **Relationship Graph** — every entity in the project as a node, every reference as an edge, laid out with a real force-directed algorithm — pan/zoom/drag, click a node to jump to it.
 - **AI Assistant** — a persistent chat panel (local, deterministic command parser — no external LLM) that can generate content in bulk, balance enemies, draft quests, tune progression, and rewrite lore on request.
 
-Everything is linked: characters reference biomes and drop items, levels reference enemies and loot tables, tasks reference whatever entity spawned them — click through via the "Referenced By" section on any entity.
+Everything is linked: characters reference biomes and drop items, levels reference enemies and loot tables, tasks reference whatever entity spawned them — click through via the "Referenced By" section on any entity, or see the whole web at once in the Relationship Graph.
+
+## Starter templates
+
+Creating a project (first run, or "+ New Project") offers a template picker: **Fantasy Action RPG**, **Sci-Fi Shooter**, **Metroidvania**, **Cozy Life Sim**, or **Blank Project**. Each non-blank template seeds real, cross-linked pillars, world, characters, items, a quest chain and a level in one step — a genuine starting point, not placeholder text. Picking a template is a single undo step (Ctrl+Z returns to blank).
 
 ## Exports
 
@@ -53,3 +59,19 @@ Styling is real Tailwind, compiled to a static `css/tailwind.css` so the shipped
 npm install       # once, to get the tailwindcss devDependency
 npm run build:css
 ```
+
+### Running the test suite
+
+An end-to-end Playwright suite (`tests/*.spec.js`) covers app boot, every content module, the starter templates, the assistant, bulk actions/validation, exports, the relationship graph, search and the master document compiler:
+
+```bash
+npm install
+npx playwright install   # only needed if you don't already have a Chromium build Playwright can find
+npm run test:e2e         # or npm run test:e2e:ui for the interactive UI mode
+```
+
+The suite starts its own static server (`playwright.config.mjs`'s `webServer`), so `npm run serve` doesn't need to be running separately. If tests are flaky under heavy parallelism on a constrained machine, `npx playwright test --workers=1` is more reliable.
+
+### Known design characteristic
+
+Entity fields (name, description, tags, and every schema-driven field) are live-bound directly to the in-memory entity as you type — the same object that's already in the project, not a separate draft. "Save" persists that object to IndexedDB (and is required before a change survives a reload); it doesn't gate whether the in-memory object itself can be edited. Concretely: leaving a name blank and clicking Save shows a validation error and skips persistence, but the field still shows blank until you type a real name and save successfully or reload without saving.

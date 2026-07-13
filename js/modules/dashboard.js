@@ -246,6 +246,6 @@ export function mountDashboard(container) {
     container.append(header, overviewGrid, grid);
   }
   render();
-  const unsub = store.on(() => render());
+  const unsub = store.on((project, reason) => { if (reason.startsWith('mutate') || reason === 'undo' || reason === 'redo' || reason === 'load') render(); });
   return () => unsub();
 }

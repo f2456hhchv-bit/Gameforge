@@ -455,7 +455,7 @@ export function createCollectionView(config) {
       container.appendChild(rootEl);
       if (opts.selectId) state.selectedId = opts.selectId;
       render();
-      unsubscribe = store.on(() => render());
+      unsubscribe = store.on((project, reason) => { if (reason.startsWith('mutate') || reason === 'undo' || reason === 'redo' || reason === 'load') render(); });
       window.addEventListener('mousemove', onResizeMouseMove);
       window.addEventListener('mouseup', onResizeMouseUp);
       return () => {

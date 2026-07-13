@@ -1,7 +1,7 @@
 import { h, uid, fmtDate, timeAgo } from '../util.js';
 import { store } from '../store.js';
 import { exportMarkdown, exportHTML, printToPDF, exportDOCX, markdownToHTML } from './exportManager.js';
-import { toast } from '../components/ui.js';
+import { toast, openModal } from '../components/ui.js';
 
 function list(key) { return store.list(key); }
 function bulletList(items, empty = '_None yet._') {
@@ -202,6 +202,39 @@ const DOC_TYPES = [
   { key: 'patch-notes', label: 'Patch Notes', icon: '🩹', gen: genPatchNotes },
 ];
 
+function compileMasterDocument(project) {
+  const generated = DOC_TYPES.map(t => t.gen(project));
+  return `# ${project.name} — Master Design Compendium
+
+*Compiled ${fmtDate(new Date().toISOString())} from all ${DOC_TYPES.length} documentation types. Table of contents:*
+
+${DOC_TYPES.map(t => `- ${t.icon} ${t.label}`).join('\n')}
+
+---
+
+${generated.join('\n\n---\n\n')}
+`;
+}
+
+function openCompileModal() {
+  const content = compileMasterDocument(store.project);
+  const wordCount = content.split(/\s+/).length;
+  const modalBody = h('div', { class: 'flex flex-col gap-4' }, [
+    h('p', { class: 'text-sm text-slate-500' }, `Every documentation type stitched into one file — ${wordCount.toLocaleString()} words. This compiles fresh from the live project each time; it doesn't save a snapshot.`),
+    h('div', { class: 'flex gap-2 flex-wrap' }, [
+      h('button', { class: 'btn-secondary', onclick: () => exportMarkdown('master-compendium', content) }, '⬇ Markdown (.md)'),
+      h('button', { class: 'btn-secondary', onclick: () => exportHTML('master-compendium', `${store.project.name} — Master Design Compendium`, content) }, '⬇ HTML (.html)'),
+      h('button', { class: 'btn-secondary', onclick: () => printToPDF(`${store.project.name} — Master Design Compendium`, content) }, '⬇ PDF (print)'),
+      h('button', { class: 'btn-secondary', onclick: () => exportDOCX('master-compendium', `${store.project.name} — Master Design Compendium`, content) }, '⬇ Word (.docx)'),
+    ]),
+  ]);
+  const preview = h('textarea', { class: 'textarea font-mono text-xs', style: 'min-height:320px;' });
+  preview.value = content;
+  preview.readOnly = true;
+  modalBody.appendChild(preview);
+  openModal(modalBody, { title: '📚 Compile Master Document', width: '720px' });
+}
+
 export function mountDocs(container) {
   const state = { activeKey: DOC_TYPES[0].key, mode: 'edit' };
 
@@ -230,17 +263,22 @@ export function mountDocs(container) {
     const type = DOC_TYPES.find(t => t.key === state.activeKey);
     const doc = currentDoc(state.activeKey);
 
-    const listPanel = h('div', { class: 'w-72 shrink-0 border-r border-surface-3/60 overflow-y-auto scroll-thin p-2 flex flex-col gap-1' },
-      DOC_TYPES.map(t => {
-        const d = currentDoc(t.key);
-        return h('div', {
-          class: `rounded-lg px-3 py-2.5 cursor-pointer ${state.activeKey === t.key ? 'bg-accent-muted' : 'hover:bg-surface-2'}`,
-          onclick: () => { state.activeKey = t.key; render(); },
-        }, [
-          h('div', { class: 'flex items-center gap-2' }, [h('span', {}, t.icon), h('span', { class: 'font-medium text-sm' }, t.label)]),
-          h('div', { class: 'text-xs text-slate-400 mt-0.5' }, d ? `Generated ${timeAgo(d.updatedAt)}` : 'Not generated yet'),
-        ]);
-      }));
+    const listPanel = h('div', { class: 'w-72 shrink-0 border-r border-surface-3/60 flex flex-col' }, [
+      h('div', { class: 'p-2 border-b border-surface-3/60' }, [
+        h('button', { class: 'btn-secondary w-full justify-center text-sm', onclick: openCompileModal }, '📚 Compile Master Document'),
+      ]),
+      h('div', { class: 'flex-1 overflow-y-auto scroll-thin p-2 flex flex-col gap-1' },
+        DOC_TYPES.map(t => {
+          const d = currentDoc(t.key);
+          return h('div', {
+            class: `rounded-lg px-3 py-2.5 cursor-pointer ${state.activeKey === t.key ? 'bg-accent-muted' : 'hover:bg-surface-2'}`,
+            onclick: () => { state.activeKey = t.key; render(); },
+          }, [
+            h('div', { class: 'flex items-center gap-2' }, [h('span', {}, t.icon), h('span', { class: 'font-medium text-sm' }, t.label)]),
+            h('div', { class: 'text-xs text-slate-400 mt-0.5' }, d ? `Generated ${timeAgo(d.updatedAt)}` : 'Not generated yet'),
+          ]);
+        })),
+    ]);
 
     let contentArea;
     if (!doc) {
