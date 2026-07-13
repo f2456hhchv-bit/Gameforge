@@ -234,6 +234,7 @@ export function mountDashboard(container) {
         ['designer', '🧭 Game Designer'], ['world', '🌍 World Builder'], ['characters', '🧑‍🎤 Character Studio'],
         ['items', '🗡️ Item Studio'], ['combat', '⚔️ Combat Designer'], ['levels', '🗺️ Level Designer'],
         ['quests', '📯 Quest Designer'], ['tasks', '✅ Task Manager'],
+        ['graph', '🕸️ Relationship Graph'], ['docs', '📄 Documentation'],
       ].map(([key, label]) => h('button', { class: 'btn-secondary justify-start', onclick: () => openEntity(key) }, label))),
     ]);
 
