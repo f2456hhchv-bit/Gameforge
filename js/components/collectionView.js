@@ -1,6 +1,6 @@
 // Generic schema-driven list+detail engine reused by World/Characters/Items/
 // Combat/Levels/Art/UI/Audio modules. One engine, many schemas.
-import { h, uid, timeAgo, download, toCSV } from '../util.js';
+import { h, uid, timeAgo, download, toCSV, nowISO } from '../util.js';
 import { store } from '../store.js';
 import { buildForm } from './entityForm.js';
 import { toast, confirmModal, openModal, closeTopModal } from './ui.js';
@@ -122,6 +122,8 @@ export function createCollectionView(config) {
         description: '',
         ...makeDefaults(subtypeKey),
         ...partial,
+        createdAt: nowISO(),
+        updatedAt: nowISO(),
       };
       store.project.collections[key].push(item);
       onCreate(item, store);

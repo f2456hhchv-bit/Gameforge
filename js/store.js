@@ -179,6 +179,7 @@ class Store {
     const copy = JSON.parse(JSON.stringify(item));
     copy.id = uid(collectionKey);
     copy.name = (copy.name || 'Untitled') + ' (Copy)';
+    copy.createdAt = nowISO();
     this.upsert(collectionKey, copy, { label: `Duplicate ${copy.name}` });
     return copy;
   }

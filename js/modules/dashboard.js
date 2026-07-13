@@ -1,10 +1,36 @@
 import { h, timeAgo, fmtDate, uid } from '../util.js';
 import { store } from '../store.js';
-import { COLLECTIONS, PLATFORMS, ENGINES } from '../schema.js';
+import { COLLECTIONS, PLATFORMS, ENGINES, TASK_STATUSES } from '../schema.js';
 import { openModal, closeTopModal, toast } from '../components/ui.js';
 import { openEntity } from '../router.js';
+import { barChart, areaSparkline } from '../components/charts.js';
 
 const TASK_CATEGORIES = ['design', 'art', 'code', 'audio', 'writing', 'qa', 'general'];
+const STATUS_LABELS = { backlog: 'Backlog', todo: 'To Do', 'in-progress': 'In Progress', review: 'Review', done: 'Done' };
+const CONTENT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries'];
+
+function taskStatusBreakdown(tasks) {
+  return TASK_STATUSES.map(s => ({ label: STATUS_LABELS[s], value: tasks.filter(t => t.status === s).length }));
+}
+
+function contentGrowthSeries(project, days = 14) {
+  const buckets = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    buckets.push({ key: d.toISOString().slice(0, 10), label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), value: 0 });
+  }
+  const byKey = Object.fromEntries(buckets.map(b => [b.key, b]));
+  for (const key of CONTENT_COLLECTIONS) {
+    for (const item of project.collections[key]) {
+      if (!item.createdAt) continue;
+      const dayKey = item.createdAt.slice(0, 10);
+      if (byKey[dayKey]) byKey[dayKey].value += 1;
+    }
+  }
+  return buckets;
+}
 
 function pct(done, total) {
   if (!total) return 0;
@@ -26,8 +52,8 @@ function computeStats(project) {
 
   const featureProgress = pct(project.collections.designDocs.length, 14); // 14 design-doc kinds in the spec
   const assetCount = project.collections.characters.length + project.collections.items.length +
-    project.collections.biomes.length + project.collections.levels.length;
-  const assetProgress = Math.min(100, Math.round((assetCount / 60) * 100));
+    project.collections.biomes.length + project.collections.levels.length + project.collections.quests.length;
+  const assetProgress = Math.min(100, Math.round((assetCount / 75) * 100));
   const codeProgress = byCategory.code;
   const taskProgress = pct(doneTasks, totalTasks);
 
@@ -164,6 +190,18 @@ export function mountDashboard(container) {
       progressRow('Code Progress', stats.codeProgress),
     ]);
 
+    const taskBreakdown = taskStatusBreakdown(project.collections.tasks);
+    const taskChartPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
+      h('h3', { class: 'font-semibold' }, 'Tasks by Status'),
+      barChart(taskBreakdown, { emptyText: 'No tasks yet — generate some content and tasks appear automatically.' }),
+    ]);
+
+    const growth = contentGrowthSeries(project);
+    const growthPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
+      h('h3', { class: 'font-semibold' }, 'Content Created (Last 14 Days)'),
+      areaSparkline(growth, { emptyText: 'Generate some characters, items or biomes to see activity here.' }),
+    ]);
+
     const milestones = project.collections.milestones;
     const milestonesPanel = h('div', { class: 'card p-5 flex flex-col gap-3' }, [
       h('div', { class: 'flex items-center justify-between' }, [
@@ -195,12 +233,12 @@ export function mountDashboard(container) {
       h('div', { class: 'grid grid-cols-2 gap-2' }, [
         ['designer', '🧭 Game Designer'], ['world', '🌍 World Builder'], ['characters', '🧑‍🎤 Character Studio'],
         ['items', '🗡️ Item Studio'], ['combat', '⚔️ Combat Designer'], ['levels', '🗺️ Level Designer'],
-        ['art', '🎨 Art Director'], ['tasks', '✅ Task Manager'],
+        ['quests', '📯 Quest Designer'], ['tasks', '✅ Task Manager'],
       ].map(([key, label]) => h('button', { class: 'btn-secondary justify-start', onclick: () => openEntity(key) }, label))),
     ]);
 
     const grid = h('div', { class: 'grid grid-cols-1 lg:grid-cols-3 gap-4 p-5' }, [
-      h('div', { class: 'lg:col-span-2 flex flex-col gap-4' }, [progressPanel, activityPanel]),
+      h('div', { class: 'lg:col-span-2 flex flex-col gap-4' }, [progressPanel, growthPanel, taskChartPanel, activityPanel]),
       h('div', { class: 'flex flex-col gap-4' }, [milestonesPanel, quickLinks]),
     ]);
 

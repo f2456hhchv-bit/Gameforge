@@ -3,7 +3,7 @@
 // real mutations through the same store/generator functions the UI modules
 // use, so "generate 50 weapons" in chat does exactly what the Item Studio
 // generator button does. Conversation history is persisted per-project.
-import { h, uid, timeAgo, pick } from '../util.js';
+import { h, uid, timeAgo, pick, nowISO } from '../util.js';
 import { store } from '../store.js';
 import { toast } from '../components/ui.js';
 import { COLLECTIONS } from '../schema.js';
@@ -71,7 +71,7 @@ function runBulkGenerate(ct, count) {
   for (let i = 0; i < count; i++) {
     const rng = rngFor(Math.random() + i);
     const partial = ct.generate(rng) || {};
-    const item = { id: uid(ct.collection), tags: [], links: {}, description: '', ...partial, subtype: ct.subtype || partial.subtype };
+    const item = { id: uid(ct.collection), tags: [], links: {}, description: '', ...partial, subtype: ct.subtype || partial.subtype, createdAt: nowISO(), updatedAt: nowISO() };
     store.project.collections[ct.collection].push(item);
     if (ct.taskFor) autoTask(ct.collection, item, ct.taskFor(item));
     created.push(item);
@@ -101,7 +101,7 @@ function improveProgression() {
   if (doc) {
     doc.scalingNotes = doc.scalingNotes ? `${doc.scalingNotes}\n\n${suggestion}` : suggestion;
   } else {
-    doc = { id: uid('designDocs'), subtype: 'difficulty', name: 'Difficulty', description: 'Auto-drafted by the assistant.', modes: ['Story', 'Normal', 'Hard'], scalingNotes: suggestion, accessibilityOptions: [], tags: [], links: {} };
+    doc = { id: uid('designDocs'), subtype: 'difficulty', name: 'Difficulty', description: 'Auto-drafted by the assistant.', modes: ['Story', 'Normal', 'Hard'], scalingNotes: suggestion, accessibilityOptions: [], tags: [], links: {}, createdAt: nowISO(), updatedAt: nowISO() };
     store.project.collections.designDocs.push(doc);
   }
   const task = store.addTask({ title: 'Tune progression curve based on assistant suggestions', category: 'design', priority: 'medium', estimateHours: 3, description: suggestion });
@@ -115,7 +115,7 @@ function rewriteLore() {
   store.snapshot();
   if (!biomes.length) {
     const rng = rngFor(Math.random());
-    const fresh = { id: uid('biomes'), tags: [], links: {}, description: '', ...generatePlace(rng, 'biome') };
+    const fresh = { id: uid('biomes'), tags: [], links: {}, description: '', ...generatePlace(rng, 'biome'), createdAt: nowISO(), updatedAt: nowISO() };
     store.project.collections.biomes.push(fresh);
     store.commit('Assistant: create a biome and write its lore');
     store.logActivity('Assistant created a new biome (none existed) and wrote its lore', { icon: '🤖' });

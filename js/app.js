@@ -5,6 +5,7 @@ import { MODULES, resolveModuleKey, getModule } from './modules/registry.js';
 import { setNavigationHandler } from './router.js';
 import { openModal, closeTopModal, toast, promptModal, confirmModal } from './components/ui.js';
 import { COLLECTIONS } from './schema.js';
+import { TEMPLATES } from './templates.js';
 
 const root = document.getElementById('app');
 
@@ -21,13 +22,38 @@ async function boot() {
   renderShell();
 }
 
+function templatePickerContent(onPick) {
+  return h('div', { class: 'grid grid-cols-1 sm:grid-cols-2 gap-3' }, TEMPLATES.map(t => h('button', {
+    class: 'card p-4 text-left flex flex-col gap-1.5 hover:border-accent hover:shadow-md transition-all',
+    onclick: () => onPick(t),
+  }, [
+    h('div', { class: 'text-2xl' }, t.icon),
+    h('div', { class: 'font-semibold text-sm' }, t.label),
+    h('div', { class: 'text-xs text-slate-400 leading-relaxed' }, t.description),
+  ])));
+}
+
+async function createProjectWithTemplate(name) {
+  const template = await new Promise(resolve => {
+    openModal(templatePickerContent(t => { closeTopModal(); resolve(t); }), { title: `Choose a starting point for "${name}"`, width: '640px' });
+  });
+  const project = store.newProject(name, template.meta || {});
+  if (template.apply) {
+    store.snapshot();
+    template.apply();
+    store.commit(`Apply ${template.label} starter pack`);
+  }
+  await DB.setSetting('lastActiveProjectId', project.id);
+  return project;
+}
+
 function renderWelcome() {
   root.innerHTML = '';
   const nameInput = h('input', { class: 'input text-base', placeholder: 'e.g. Ashfall Chronicles', onkeydown: e => { if (e.key === 'Enter') create(); } });
-  function create() {
+  async function create() {
     if (!nameInput.value.trim()) { nameInput.focus(); return; }
-    const project = store.newProject(nameInput.value.trim());
-    DB.setSetting('lastActiveProjectId', project.id).then(renderShell);
+    await createProjectWithTemplate(nameInput.value.trim());
+    renderShell();
   }
   root.appendChild(h('div', { class: 'h-screen flex items-center justify-center' }, [
     h('div', { class: 'card p-10 w-[440px] flex flex-col gap-5 items-center text-center' }, [
@@ -226,8 +252,7 @@ async function openProjectSwitcher() {
         const name = await promptModal({ title: 'New Project', label: 'Project name' });
         if (!name) return;
         closeTopModal();
-        const project = store.newProject(name);
-        await DB.setSetting('lastActiveProjectId', project.id);
+        await createProjectWithTemplate(name);
         resetShellForProject();
       },
     }, '+ New Project'),
