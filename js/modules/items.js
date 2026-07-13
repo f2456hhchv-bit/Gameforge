@@ -1,9 +1,46 @@
 import { createCollectionView } from '../components/collectionView.js';
 import { rngFor, generateWeaponName, weaponStats, rarityRoll } from '../generators/procedural.js';
-import { pick, pickN } from '../util.js';
+import { h, pick, pickN } from '../util.js';
 import { RARITIES, badgeForRarity } from '../schema.js';
 import { WEAPON_BASE, ARMOR_PIECES, ACCESSORY_TYPES, CONSUMABLE_TYPES, CURRENCY_TYPES, QUEST_ITEM_TYPES, AFFIXES, RESOURCE_BASE, LEGENDARY_TITLES } from '../generators/wordbank.js';
 import { autoTask } from '../taskHooks.js';
+import { openModal } from '../components/ui.js';
+import { barChart } from '../components/charts.js';
+
+const RARITY_TABLE_WEIGHTS = { Common: 45, Uncommon: 28, Rare: 16, Epic: 7, Legendary: 3, Mythic: 1 };
+const RARITY_TABLE_TOTAL = Object.values(RARITY_TABLE_WEIGHTS).reduce((a, b) => a + b, 0);
+
+function openDropRateSimulator() {
+  const state = { runs: 1000 };
+  const runInput = h('input', { class: 'input w-28', type: 'number', min: 100, max: 100000, value: state.runs });
+  const resultsWrap = h('div', { class: 'flex flex-col gap-2' });
+
+  function simulate() {
+    const n = Math.max(100, Math.min(100000, Number(runInput.value) || 1000));
+    const rng = rngFor(Math.random());
+    const counts = Object.fromEntries(RARITIES.map(r => [r, 0]));
+    for (let i = 0; i < n; i++) counts[rarityRoll(rng)]++;
+    resultsWrap.innerHTML = '';
+    resultsWrap.appendChild(h('p', { class: 'text-xs text-slate-400' }, `${n.toLocaleString()} simulated rolls using the generator's real weighted table.`));
+    resultsWrap.appendChild(barChart(
+      RARITIES.map(r => ({ label: r, value: counts[r] })),
+      { formatValue: v => `${v.toLocaleString()} (${((v / n) * 100).toFixed(1)}%)` },
+    ));
+    resultsWrap.appendChild(h('p', { class: 'text-xs text-slate-400 pt-2 border-t border-surface-3/60' },
+      `Table weights: ${RARITIES.map(r => `${r} ${((RARITY_TABLE_WEIGHTS[r] / RARITY_TABLE_TOTAL) * 100).toFixed(1)}%`).join(' · ')}`));
+  }
+
+  const content = h('div', { class: 'flex flex-col gap-4' }, [
+    h('p', { class: 'text-sm text-slate-500' }, 'Preview the exact rarity distribution "Generate Item" will produce, before generating any real items.'),
+    h('div', { class: 'flex items-end gap-2' }, [
+      h('div', { class: 'flex flex-col gap-1' }, [h('label', { class: 'label' }, 'Simulated rolls'), runInput]),
+      h('button', { class: 'btn-primary', onclick: simulate }, 'Simulate'),
+    ]),
+    resultsWrap,
+  ]);
+  simulate();
+  openModal(content, { title: '🎲 Drop Rate Simulator', width: '480px' });
+}
 
 export const SUBTYPES = [
   { key: 'weapon', label: 'Weapon', icon: '🗡️' },
@@ -136,6 +173,7 @@ export function mountItems(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
+    toolbarActions: [{ icon: '🎲', label: 'Drop Rate Simulator', onClick: openDropRateSimulator }],
     onCreate: (item) => autoTask('items', item, {
       category: 'art', estimateHours: 2, title: (i) => `Create icon/model art: ${i.name}`,
       description: `Art pass for ${item.subtype || 'item'} "${item.name}" (${item.rarity || 'Common'}).`,

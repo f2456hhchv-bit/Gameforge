@@ -1,6 +1,6 @@
 import { createCollectionView } from '../components/collectionView.js';
 import { store } from '../store.js';
-import { PLATFORMS } from '../schema.js';
+import { PLATFORMS, RARITIES } from '../schema.js';
 import { rngFor } from '../generators/procedural.js';
 import { pick } from '../util.js';
 
@@ -19,6 +19,7 @@ const SUBTYPES = [
   { key: 'risk', label: 'Risk Analysis', icon: '⚠️' },
   { key: 'swot', label: 'SWOT', icon: '🧩' },
   { key: 'success-metric', label: 'Success Metric', icon: '📏' },
+  { key: 'economy', label: 'Economy Report', icon: '💱' },
 ];
 
 const FIELDS_BY_SUBTYPE = {
@@ -96,6 +97,15 @@ const FIELDS_BY_SUBTYPE = {
     { key: 'target', label: 'Target Value', type: 'text' },
     { key: 'measurementMethod', label: 'How We Measure It', type: 'textarea', cols: 2 },
   ],
+  'economy': [
+    { key: 'currencyTypes', label: 'Currency Types', type: 'list' },
+    { key: 'totalItemValue', label: 'Total Item Value in Circulation', type: 'number' },
+    { key: 'totalQuestRewardXP', label: 'Total Quest Reward XP', type: 'number' },
+    { key: 'rarityDistribution', label: 'Item Rarity Distribution', type: 'list', cols: 2 },
+    { key: 'sources', label: 'Sources (where currency/value enters)', type: 'list', cols: 2, placeholder: 'e.g. quest rewards, boss drops' },
+    { key: 'sinks', label: 'Sinks (where currency/value leaves)', type: 'list', cols: 2, placeholder: 'e.g. crafting costs, shop purchases' },
+    { key: 'notes', label: 'Balance Notes', type: 'textarea', cols: 2 },
+  ],
 };
 
 function badgeFor(item) {
@@ -165,6 +175,32 @@ const GENERATORS = [
       return { subtype: 'success-metric', name: m.name, metricType: m.metricType, target: m.target, measurementMethod: 'Tracked via analytics dashboard / storefront reviews.' };
     },
   },
+  {
+    label: 'Generate Economy Report (from live project data)', run: () => {
+      const items = store.list('items');
+      const quests = store.list('quests');
+      const currencyItems = items.filter(i => i.subtype === 'currency');
+      const totalItemValue = items.reduce((s, i) => s + (Number(i.value) || 0), 0);
+      const totalQuestRewardXP = quests.reduce((s, q) => s + (Number(q.rewardXP) || 0), 0);
+      const rarityDistribution = RARITIES.map(r => `${r}: ${items.filter(i => i.rarity === r).length}`);
+      const craftedItems = items.filter(i => (i.craftedFrom || []).length);
+      const sources = [
+        `${quests.length} quest(s) grant XP rewards (${totalQuestRewardXP.toLocaleString()} total)`,
+        `${currencyItems.length} currency item type(s) worth ${currencyItems.reduce((s, i) => s + (Number(i.value) || 0), 0).toLocaleString()} combined`,
+        `${items.filter(i => i.subtype !== 'currency').length} non-currency item(s) with a combined value of ${totalItemValue.toLocaleString()}`,
+      ];
+      const sinks = craftedItems.length
+        ? [`${craftedItems.length} item(s) consume crafting materials (see each item's "Crafted From" relation)`]
+        : ['No crafting-cost items defined yet — add "Crafted From" relations in Item Studio to model sinks here.'];
+      return {
+        subtype: 'economy', name: 'Economy Report',
+        description: 'Auto-computed from the live project — regenerate after adding more items/quests to refresh.',
+        currencyTypes: currencyItems.map(i => i.name),
+        totalItemValue, totalQuestRewardXP, rarityDistribution, sources, sinks,
+        notes: '',
+      };
+    },
+  },
 ];
 
 export function mountDesigner(container, opts) {
@@ -176,7 +212,7 @@ export function mountDesigner(container, opts) {
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
-    helpText: 'Pillars, core loop, USP, audience, monetisation, SWOT, personas, risk analysis, and success metrics all live here.',
+    helpText: 'Pillars, core loop, USP, audience, monetisation, SWOT, personas, risk analysis, success metrics, and a data-driven economy report all live here.',
   });
   return view.mount(container, opts);
 }
