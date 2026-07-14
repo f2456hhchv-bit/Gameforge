@@ -15,6 +15,20 @@ export const SUBTYPES = [
   { key: 'collection', label: 'Collection', icon: '📦' },
   { key: 'investigation', label: 'Investigation / Mystery', icon: '🔍' },
   { key: 'timed-event', label: 'Timed Event', icon: '⏱️' },
+  { key: 'delivery', label: 'Delivery', icon: '📬' },
+  { key: 'rescue', label: 'Rescue', icon: '🆘' },
+  { key: 'defense', label: 'Defense / Siege', icon: '🛡️' },
+  { key: 'heist', label: 'Heist', icon: '🎭' },
+  { key: 'race', label: 'Race', icon: '🏁' },
+  { key: 'puzzle', label: 'Puzzle', icon: '🧩' },
+  { key: 'diplomacy', label: 'Diplomacy', icon: '🕊️' },
+  { key: 'bounty', label: 'Bounty', icon: '🎯' },
+  { key: 'crafting', label: 'Crafting', icon: '🔨' },
+  { key: 'exploration', label: 'Exploration', icon: '🧭' },
+  { key: 'moral-choice', label: 'Moral Choice', icon: '⚖️' },
+  { key: 'infiltration', label: 'Infiltration', icon: '🥷' },
+  { key: 'sabotage', label: 'Sabotage', icon: '🧨' },
+  { key: 'tournament', label: 'Tournament', icon: '🏆' },
 ];
 
 const FIELDS = [
@@ -48,6 +62,20 @@ const SUBTYPE_QUEST_FLAVOR = {
   collection: { verb: 'Recover', failureConditions: [], branching: '' },
   investigation: { verb: 'Investigate', failureConditions: ['Key witness dies or flees before being questioned'], branching: 'Player may accuse the wrong suspect if evidence is misread, locking out the true culprit\'s resolution.' },
   'timed-event': { verb: 'Defend', failureConditions: ['Time limit expires before the objective completes'], branching: '' },
+  delivery: { verb: 'Deliver', failureConditions: ['Item is lost, stolen or destroyed before delivery', 'Recipient moves on if delivery is too late'], branching: 'Player may open and inspect the package en route, altering recipient trust.' },
+  rescue: { verb: 'Rescue', failureConditions: ['Captive is executed or moved before rescue', 'Captive dies during extraction'], branching: 'Player may negotiate the captive\'s release instead of a direct rescue, at a resource cost.' },
+  defense: { verb: 'Defend', failureConditions: ['Defended objective or location falls before the assault ends'], branching: 'Player may commit reserves early for safety or hold them back for a stronger late push.' },
+  heist: { verb: 'Steal from', failureConditions: ['Alarm triggered and guards mobilize before extraction', 'Stolen goods dropped or recovered by guards'], branching: 'Player may take the safe, slow route or a fast, loud one with better loot but higher risk.' },
+  race: { verb: 'Race to', failureConditions: ['Finish outside the time/placement threshold'], branching: '' },
+  puzzle: { verb: 'Solve', failureConditions: [], branching: 'Multiple valid solution paths exist; the one chosen colors the reward/reputation gained.' },
+  diplomacy: { verb: 'Broker peace between', failureConditions: ['Talks collapse if reputation with either side is too low'], branching: 'Player may favor one side\'s terms over the other, altering long-term faction relations.' },
+  bounty: { verb: 'Track down', failureConditions: ['Target escapes the region before being found', 'Target is killed by someone else first'], branching: 'Player may bring the target in alive for a bonus, or dead for speed.' },
+  crafting: { verb: 'Craft', failureConditions: [], branching: '' },
+  exploration: { verb: 'Chart', failureConditions: [], branching: '' },
+  'moral-choice': { verb: 'Decide the fate of', failureConditions: [], branching: 'Every resolution is morally ambiguous — there is no clean "good" outcome, only tradeoffs.' },
+  infiltration: { verb: 'Infiltrate', failureConditions: ['Detected and forcibly ejected before reaching the objective'], branching: 'Player may impersonate staff for easier access, or stay hidden entirely for a higher reward.' },
+  sabotage: { verb: 'Sabotage', failureConditions: ['Sabotage discovered and reversed before it takes effect'], branching: 'Player may make the sabotage look like an accident, avoiding blame, or leave an obvious message.' },
+  tournament: { verb: 'Compete in', failureConditions: ['Eliminated before the final round'], branching: 'Player may throw an early match strategically to avoid a tough opponent later.' },
 };
 
 function generateQuest(rng, subtype) {
@@ -123,7 +151,7 @@ export function mountQuests(container, opts) {
       category: 'writing', estimateHours: 5, title: (i) => `Write & implement quest: ${i.name}`,
       description: `Script dialogue, wire up quest state, and playtest "${item.name}".`,
     }),
-    helpText: 'Main quests, side quests, faction quests, world events, repeatables, escorts, collections, investigations and timed events — with stages, dialogue, branching outcomes, companion approval effects, rewards and prerequisites.',
+    helpText: 'Main, side, faction, world-event, repeatable, escort, collection, investigation, timed-event, delivery, rescue, defense/siege, heist, race, puzzle, diplomacy, bounty, crafting, exploration, moral-choice, infiltration, sabotage and tournament quests — with stages, dialogue, branching outcomes, companion approval effects, rewards and prerequisites.',
   });
   return view.mount(container, opts);
 }
