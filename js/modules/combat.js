@@ -19,6 +19,20 @@ export const SUBTYPES = [
   { key: 'environmental-hazard', label: 'Environmental Hazard', icon: '💣' },
   { key: 'stealth-takedown', label: 'Stealth Takedown', icon: '🥷' },
   { key: 'mount-vehicle-combat', label: 'Mount / Vehicle Combat', icon: '🐎' },
+  { key: 'ultimate', label: 'Ultimate Ability', icon: '🌟' },
+  { key: 'passive-trait', label: 'Passive Trait', icon: '🔹' },
+  { key: 'aura', label: 'Aura', icon: '🌀' },
+  { key: 'channel-ability', label: 'Channel Ability', icon: '📡' },
+  { key: 'dodge-roll', label: 'Dodge / Roll Mechanic', icon: '💨' },
+  { key: 'block-mechanic', label: 'Block Mechanic', icon: '🧱' },
+  { key: 'execute-finisher', label: 'Execute / Finisher', icon: '☠️' },
+  { key: 'elemental-reaction', label: 'Elemental Reaction', icon: '🔥' },
+  { key: 'terrain-interaction', label: 'Terrain Interaction', icon: '🏔️' },
+  { key: 'weapon-switch-combo', label: 'Weapon-Switch Combo', icon: '🔀' },
+  { key: 'team-combo', label: 'Team Combo', icon: '🤝' },
+  { key: 'enrage-timer', label: 'Enrage Timer', icon: '⏰' },
+  { key: 'adds-management', label: 'Adds Management', icon: '🚨' },
+  { key: 'chain-reaction', label: 'Chain Reaction', icon: '🔗' },
 ];
 
 const FIELDS_BY_SUBTYPE = {
@@ -100,6 +114,81 @@ const FIELDS_BY_SUBTYPE = {
     { key: 'controlScheme', label: 'Control Scheme', type: 'textarea', cols: 2, placeholder: 'Movement vs. weapon control split, dismount conditions…' },
     { key: 'weakPoints', label: 'Weak Points', type: 'list', placeholder: 'e.g. Rear engine, rider' },
   ],
+  ultimate: [
+    { key: 'damageType', label: 'Damage Type', type: 'select', options: DAMAGE_TYPES },
+    { key: 'cooldown', label: 'Cooldown (seconds)', type: 'number', placeholder: 'e.g. 90' },
+    { key: 'ultimateBuildupCondition', label: 'Buildup Condition', type: 'text', placeholder: 'e.g. Builds via dealing/taking damage' },
+    { key: 'cinematicNotes', label: 'Cinematic / Camera Notes', type: 'textarea', cols: 2 },
+  ],
+  'passive-trait': [
+    { key: 'triggerCondition', label: 'Trigger Condition', type: 'text', placeholder: 'e.g. On critical hit' },
+    { key: 'effectMagnitude', label: 'Effect Magnitude', type: 'text', placeholder: 'e.g. +10% damage for 3s' },
+    { key: 'stackable', label: 'Stackable?', type: 'select', options: ['No', 'Yes — up to a cap', 'Yes — uncapped'] },
+  ],
+  aura: [
+    { key: 'radius', label: 'Radius', type: 'text', placeholder: 'e.g. 6m' },
+    { key: 'affectedTargets', label: 'Affected Targets', type: 'select', options: ['Allies', 'Enemies', 'Both'] },
+    { key: 'auraEffect', label: 'Aura Effect', type: 'textarea', cols: 2 },
+    { key: 'duration', label: 'Duration', type: 'text', placeholder: 'e.g. Permanent while active, or 10s pulse' },
+  ],
+  'channel-ability': [
+    { key: 'channelDuration', label: 'Channel Duration', type: 'text', placeholder: 'e.g. 3s' },
+    { key: 'interruptible', label: 'Interruptible?', type: 'select', options: ['Yes', 'No'] },
+    { key: 'movementDuringChannel', label: 'Movement During Channel', type: 'select', options: ['Locked', 'Slowed', 'Free'] },
+    { key: 'effectPerTick', label: 'Effect Per Tick', type: 'text' },
+  ],
+  'dodge-roll': [
+    { key: 'iFrameWindow', label: 'Invincibility Frame Window', type: 'text', placeholder: 'e.g. Frames 3-9 of the roll' },
+    { key: 'staminaCost', label: 'Stamina Cost', type: 'text' },
+    { key: 'distance', label: 'Roll Distance', type: 'text', placeholder: 'e.g. 3m' },
+  ],
+  'block-mechanic': [
+    { key: 'blockType', label: 'Block Type', type: 'select', options: ['Full Block', 'Parryable Block', 'Directional Block'] },
+    { key: 'chipDamage', label: 'Chip Damage', type: 'text', placeholder: 'e.g. 10% of incoming damage bleeds through' },
+    { key: 'staminaDrainOnBlock', label: 'Stamina Drain on Block', type: 'text' },
+    { key: 'perfectBlockWindow', label: 'Perfect Block Window', type: 'text', placeholder: 'e.g. 150ms before impact' },
+  ],
+  'execute-finisher': [
+    { key: 'healthThreshold', label: 'Health Threshold', type: 'text', placeholder: 'e.g. Below 20% HP' },
+    { key: 'damageMultiplier', label: 'Damage Multiplier', type: 'text', placeholder: 'e.g. Instant kill / 5x damage' },
+    { key: 'animationLength', label: 'Animation Length', type: 'text' },
+    { key: 'unlockCondition', label: 'Unlock Condition', type: 'text', placeholder: 'e.g. Available from level 1, or unlocked via skill tree' },
+  ],
+  'elemental-reaction': [
+    { key: 'primaryElement', label: 'Primary Element', type: 'select', options: DAMAGE_TYPES },
+    { key: 'secondaryElement', label: 'Secondary Element', type: 'select', options: DAMAGE_TYPES },
+    { key: 'reactionEffect', label: 'Reaction Effect', type: 'textarea', cols: 2, placeholder: 'e.g. Fire + Oil = spreading burn that persists on terrain' },
+  ],
+  'terrain-interaction': [
+    { key: 'terrainType', label: 'Terrain Type', type: 'text', placeholder: 'e.g. Water, ice, tall grass, oil slick' },
+    { key: 'interactionEffect', label: 'Interaction Effect', type: 'textarea', cols: 2 },
+    { key: 'linkedBiome', label: 'Biome', type: 'relation', target: 'biomes' },
+  ],
+  'weapon-switch-combo': [
+    { key: 'weaponsInvolved', label: 'Weapons Involved', type: 'list', placeholder: 'e.g. Sword, then Bow' },
+    { key: 'switchWindow', label: 'Switch Window', type: 'text', placeholder: 'e.g. Within 0.5s of the prior hit landing' },
+    { key: 'comboPayoff', label: 'Combo Payoff', type: 'textarea', cols: 2 },
+  ],
+  'team-combo': [
+    { key: 'requiredRoles', label: 'Required Roles', type: 'list', placeholder: 'e.g. Tank, DPS' },
+    { key: 'comboEffect', label: 'Combo Effect', type: 'textarea', cols: 2 },
+    { key: 'cooldownShared', label: 'Shared Cooldown', type: 'text' },
+  ],
+  'enrage-timer': [
+    { key: 'timeLimit', label: 'Time Limit', type: 'text', placeholder: 'e.g. 6 minutes' },
+    { key: 'enrageEffect', label: 'Enrage Effect', type: 'textarea', cols: 2, placeholder: 'e.g. +200% damage, +100% attack speed' },
+    { key: 'linkedBoss', label: 'Boss', type: 'relation', target: 'characters', subtype: 'boss' },
+  ],
+  'adds-management': [
+    { key: 'addWaveSize', label: 'Add Wave Size', type: 'text', placeholder: 'e.g. 3-5 per wave' },
+    { key: 'addSpawnInterval', label: 'Spawn Interval', type: 'text', placeholder: 'e.g. Every 30s' },
+    { key: 'priorityTargetNotes', label: 'Priority Target Notes', type: 'textarea', cols: 2, placeholder: 'Which add type must die first, and why…' },
+  ],
+  'chain-reaction': [
+    { key: 'triggerElement', label: 'Trigger Element', type: 'text', placeholder: 'e.g. Lightning' },
+    { key: 'chainRadius', label: 'Chain Radius', type: 'text', placeholder: 'e.g. 5m between links' },
+    { key: 'maxChainLength', label: 'Max Chain Length', type: 'number', placeholder: 'e.g. 4 targets' },
+  ],
 };
 
 function badgeFor(item) {
@@ -167,6 +256,20 @@ const GENERATORS = [
   },
   { label: 'Draft Combo String', run: () => generateComboString(rngFor(Math.random())) },
   { label: 'Draft Environmental Hazard', run: () => generateEnvironmentalHazard(rngFor(Math.random())) },
+  {
+    label: 'Draft Elemental Reaction (random pair)', run: () => {
+      const rng = rngFor(Math.random());
+      const primary = pick(DAMAGE_TYPES, rng);
+      let secondary = pick(DAMAGE_TYPES, rng);
+      while (secondary === primary) secondary = pick(DAMAGE_TYPES, rng);
+      return {
+        subtype: 'elemental-reaction', name: `${primary} + ${secondary} Reaction`,
+        description: `Combining ${primary} and ${secondary} damage on the same target within a short window triggers a bonus effect.`,
+        primaryElement: primary, secondaryElement: secondary,
+        reactionEffect: `${primary} priming the target, then ${secondary} triggers an amplified follow-up effect.`,
+      };
+    },
+  },
 ];
 
 export function mountCombat(container, opts) {
@@ -182,7 +285,7 @@ export function mountCombat(container, opts) {
       category: 'code', estimateHours: 3, title: (i) => `Implement: ${i.name}`,
       description: `Programming + balancing pass for ${item.subtype || 'combat entry'} "${item.name}".`,
     }),
-    helpText: 'Abilities, status effects, damage types, AI behaviour trees, boss mechanics, attack patterns, wave/spawn systems, difficulty scaling, combo strings, parry/counter windows, environmental hazards, stealth takedowns and mount/vehicle combat.',
+    helpText: 'Abilities, status effects, damage types, AI behaviour trees, boss mechanics, attack patterns, wave/spawn systems, difficulty scaling, combo strings, parry/counter windows, environmental hazards, stealth takedowns, mount/vehicle combat, ultimates, passive traits, auras, channel abilities, dodge/block mechanics, execute finishers, elemental reactions, terrain interactions, weapon-switch combos, team combos, enrage timers, adds management and chain reactions.',
   });
   return view.mount(container, opts);
 }
