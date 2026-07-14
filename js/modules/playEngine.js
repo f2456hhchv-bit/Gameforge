@@ -17,6 +17,7 @@ import { pickIntroDialogueNode, renderDialogueOverlay } from '../engine/dialogue
 import { drawHumanoid, drawHealthBar, drawPickupIcon } from '../engine/sprites.js';
 import { fireEvent, pollConditions } from '../engine/scripting.js';
 import { buildStandaloneHTML } from '../engine/exportBuild.js';
+import { sfxAttack, sfxHit, sfxDefeat, sfxPickup, sfxJump, sfxDamaged, sfxRoomCleared, sfxWin, sfxLose } from '../engine/audio.js';
 
 const CANVAS_W = 800, CANVAS_H = 480;
 const ATTACK_RANGE = 46;
@@ -43,6 +44,7 @@ export function mountPlayEngine(container, opts) {
   let canvasEl = null;
   let turnLog = [];
   let selectedTargetId = null;
+  let paused = false;
 
   function stopLoop() {
     if (raf) cancelAnimationFrame(raf);
@@ -110,6 +112,7 @@ export function mountPlayEngine(container, opts) {
 
   function beginLoop() {
     renderShell();
+    paused = false;
     input = createInput();
     lastTs = performance.now();
     raf = requestAnimationFrame(loop);
@@ -119,6 +122,7 @@ export function mountPlayEngine(container, opts) {
     teardownPlaySession();
     endSummary = { won, elapsedMs: scene.elapsedMs, itemsCollected: scene.itemsCollected, enemyCount: scene.enemies.length, mode };
     status = won ? 'won' : 'lost';
+    if (won) sfxWin(); else sfxLose();
     renderShell();
   }
 
@@ -130,12 +134,37 @@ export function mountPlayEngine(container, opts) {
   }
 
   function loop(ts) {
+    if (input.consumePressed('Escape')) {
+      paused = !paused;
+      toast(paused ? 'Paused — press Esc to resume' : 'Resumed', { type: 'info' });
+    }
+    if (paused) {
+      lastTs = ts;
+      draw();
+      drawPausedOverlay();
+      raf = requestAnimationFrame(loop);
+      return;
+    }
     const dt = Math.min(0.05, (ts - lastTs) / 1000);
     lastTs = ts;
     const stillPlaying = mode === 'platformer' ? updatePlatformer(dt) : updateArena(dt);
     if (!stillPlaying) return;
     draw();
     raf = requestAnimationFrame(loop);
+  }
+
+  function drawPausedOverlay() {
+    if (!canvasEl) return;
+    const ctx = canvasEl.getContext('2d');
+    ctx.fillStyle = 'rgba(15,17,21,0.55)';
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSED', CANVAS_W / 2, CANVAS_H / 2);
+    ctx.font = '13px sans-serif';
+    ctx.fillText('Press Esc to resume', CANVAS_W / 2, CANVAS_H / 2 + 26);
+    ctx.textAlign = 'left';
   }
 
   function checkScriptEnd() {
@@ -166,13 +195,17 @@ export function mountPlayEngine(container, opts) {
     if ((input.consumePressed('Space') || input.consumePressed('Enter')) && player.attackCooldown <= 0) {
       player.attackCooldown = ATTACK_COOLDOWN_MS;
       player.attackFlash = 120;
+      let hitAny = false, defeatedAny = false;
       for (const e of enemies) {
         if (e.alive && centerDistance(player, e) <= ATTACK_RANGE) {
+          hitAny = true;
           e.hp -= Math.max(1, player.damage - (e.defense || 0));
           e.hitFlash = 150;
-          if (e.hp <= 0) { e.alive = false; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
+          if (e.hp <= 0) { e.alive = false; defeatedAny = true; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
         }
       }
+      if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+      if (hitAny || defeatedAny) sfxAttack();
       if (checkScriptEnd()) return false;
     }
 
@@ -191,6 +224,7 @@ export function mountPlayEngine(container, opts) {
         if (e.attackTimer <= 0) {
           e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS;
           player.hp -= Math.max(1, e.damage - player.defense);
+          sfxDamaged();
           applyActions(fireEvent(scene.scriptRules, 'playerDamaged'));
           if (checkScriptEnd()) return false;
         }
@@ -205,6 +239,7 @@ export function mountPlayEngine(container, opts) {
         scene.itemsCollected++;
         if (p.damageBonus) player.damage += p.damageBonus;
         if (p.heal) player.hp = Math.min(player.maxHp, player.hp + p.heal);
+        sfxPickup();
         applyActions(fireEvent(scene.scriptRules, 'itemCollected'));
         if (checkScriptEnd()) return false;
       }
@@ -216,6 +251,19 @@ export function mountPlayEngine(container, opts) {
     updateHud();
     if (player.hp <= 0) { endGame(false); return false; }
     if (enemies.length && enemies.every(e => !e.alive)) {
+      if (scene.roomQueue && scene.roomIndex < scene.roomQueue.length - 1) {
+        scene.roomIndex++;
+        const nextRoom = scene.roomQueue[scene.roomIndex];
+        scene.enemies = nextRoom.enemies;
+        scene.roomLabel = nextRoom.label;
+        scene.player.x = scene.arena.x + 24;
+        scene.player.y = scene.arena.y + scene.arena.h / 2 - scene.player.h / 2;
+        sfxRoomCleared();
+        toast(`Room cleared — entering "${scene.roomLabel}"`, { type: 'success' });
+        applyActions(fireEvent(scene.scriptRules, 'roomCleared'));
+        if (checkScriptEnd()) return false;
+        return true;
+      }
       applyActions(fireEvent(scene.scriptRules, 'allEnemiesDefeated'));
       if (checkScriptEnd()) return false;
       endGame(true);
@@ -237,6 +285,7 @@ export function mountPlayEngine(container, opts) {
     if ((input.consumePressed('Space') || input.consumePressed('ArrowUp') || input.consumePressed('KeyW')) && player.onGround) {
       player.vy = JUMP_VELOCITY;
       player.onGround = false;
+      sfxJump();
     }
     applyGravity(player, dt);
     player.y += player.vy * dt;
@@ -247,13 +296,17 @@ export function mountPlayEngine(container, opts) {
     if (input.consumePressed('Enter') && player.attackCooldown <= 0) {
       player.attackCooldown = ATTACK_COOLDOWN_MS;
       player.attackFlash = 120;
+      let hitAny = false, defeatedAny = false;
       for (const e of enemies) {
         if (e.alive && centerDistance(player, e) <= ATTACK_RANGE) {
+          hitAny = true;
           e.hp -= Math.max(1, player.damage - (e.defense || 0));
           e.hitFlash = 150;
-          if (e.hp <= 0) { e.alive = false; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
+          if (e.hp <= 0) { e.alive = false; defeatedAny = true; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
         }
       }
+      if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+      if (hitAny || defeatedAny) sfxAttack();
       if (checkScriptEnd()) return false;
     }
 
@@ -266,6 +319,7 @@ export function mountPlayEngine(container, opts) {
       if (rectsOverlap(player, e)) {
         if (player.vy > 60 && player.y + player.h - e.y < 16) {
           e.hp = 0; e.alive = false; player.vy = -300;
+          sfxDefeat();
           applyActions(fireEvent(scene.scriptRules, 'enemyDefeated'));
           if (checkScriptEnd()) return false;
         } else {
@@ -273,6 +327,7 @@ export function mountPlayEngine(container, opts) {
           if (e.attackTimer <= 0) {
             e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS;
             player.hp -= Math.max(1, e.damage - player.defense);
+            sfxDamaged();
             applyActions(fireEvent(scene.scriptRules, 'playerDamaged'));
             if (checkScriptEnd()) return false;
           }
@@ -288,6 +343,7 @@ export function mountPlayEngine(container, opts) {
         scene.itemsCollected++;
         if (p.damageBonus) player.damage += p.damageBonus;
         if (p.heal) player.hp = Math.min(player.maxHp, player.hp + p.heal);
+        sfxPickup();
         applyActions(fireEvent(scene.scriptRules, 'itemCollected'));
         if (checkScriptEnd()) return false;
       }
@@ -322,6 +378,8 @@ export function mountPlayEngine(container, opts) {
     hud.timerText.textContent = `${(scene.elapsedMs / 1000).toFixed(1)}s`;
     hud.itemsText.textContent = `${scene.itemsCollected} item${scene.itemsCollected === 1 ? '' : 's'}`;
     hud.enemiesText.textContent = `${scene.enemies.filter(e => e.alive).length}/${scene.enemies.length} enemies`;
+    hud.roomText.textContent = scene.roomQueue ? `Room ${scene.roomIndex + 1}/${scene.roomQueue.length}` : '';
+    hud.roomText.style.display = scene.roomQueue ? '' : 'none';
   }
 
   function draw() {
@@ -371,7 +429,10 @@ export function mountPlayEngine(container, opts) {
     if (target.hp <= 0) {
       target.alive = false;
       turnLog.unshift(`${target.name} is defeated!`);
+      sfxDefeat();
       applyActions(fireEvent(scene.scriptRules, 'enemyDefeated'));
+    } else {
+      sfxHit();
     }
     resolveTurn();
   }
@@ -383,6 +444,7 @@ export function mountPlayEngine(container, opts) {
     scene.itemsCollected++;
     if (item.heal) { scene.player.hp = Math.min(scene.player.maxHp, scene.player.hp + item.heal); turnLog.unshift(`Used ${item.name} — healed ${item.heal}.`); }
     if (item.damageBonus) { scene.player.damage += item.damageBonus; turnLog.unshift(`Used ${item.name} — damage +${item.damageBonus}.`); }
+    sfxPickup();
     applyActions(fireEvent(scene.scriptRules, 'itemCollected'));
     resolveTurn();
   }
@@ -407,6 +469,7 @@ export function mountPlayEngine(container, opts) {
       const dmg = Math.max(1, e.damage - scene.player.defense);
       scene.player.hp -= dmg;
       turnLog.unshift(`${e.name} hits you for ${dmg}.`);
+      sfxDamaged();
       applyActions(fireEvent(scene.scriptRules, 'playerDamaged'));
     }
     applyActions(pollConditions(scene.scriptRules, { elapsedSeconds: 0, playerHp: scene.player.hp }));
@@ -548,6 +611,7 @@ export function mountPlayEngine(container, opts) {
       hud = {
         hpFill: h('div', { class: 'progress-fill' }),
         hpText: h('span', { class: 'text-xs font-semibold' }),
+        roomText: h('span', { class: 'badge-accent' }),
         timerText: h('span', { class: 'text-xs text-slate-400' }),
         itemsText: h('span', { class: 'text-xs text-slate-400' }),
         enemiesText: h('span', { class: 'text-xs text-slate-400' }),
@@ -557,7 +621,7 @@ export function mountPlayEngine(container, opts) {
           h('div', { class: 'progress-track' }, [hud.hpFill]),
           hud.hpText,
         ]),
-        hud.enemiesText, hud.itemsText, hud.timerText,
+        hud.roomText, hud.enemiesText, hud.itemsText, hud.timerText,
       ]);
       stage.appendChild(hudBar);
       body.appendChild(h('p', { class: 'text-xs text-slate-400 -mb-2' }, scene.roomLabel));

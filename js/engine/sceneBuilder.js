@@ -86,21 +86,40 @@ function buildPickups(level, mode, rng) {
   }));
 }
 
+const MAX_ROOMS = 4;
+
+// In Arena mode, splits the level's own generated `rooms` list (previously
+// just shown as a label) across the enemy roster so a level plays out as a
+// real multi-room crawl: clear the current room's enemies to advance,
+// rather than one flat pile of enemies in a single space.
+function buildRoomQueue(level, allEnemies) {
+  const roomNames = (level.rooms && level.rooms.length ? level.rooms : []).slice(0, MAX_ROOMS);
+  if (roomNames.length < 2 || allEnemies.length < 2) return null;
+  const queue = roomNames.map(() => []);
+  allEnemies.forEach((e, i) => queue[i % queue.length].push(e));
+  const nonEmpty = queue.map((enemies, i) => ({ label: roomNames[i], enemies })).filter(r => r.enemies.length);
+  return nonEmpty.length > 1 ? nonEmpty : null;
+}
+
 // rng: optional seeded rng (falls back to Math.random via util's pick/pickN defaults).
 // mode: 'arena' (default, top-down) | 'platformer' | 'turnbased'.
 export function buildScene(level, rng = Math.random, mode = 'arena') {
+  const allEnemies = buildEnemies(level, mode);
+  const roomQueue = mode === 'arena' ? buildRoomQueue(level, allEnemies) : null;
+
   const scene = {
     mode,
     arena: ARENA,
-    roomLabel: (level.rooms && level.rooms[0]) || level.name || 'Arena',
+    roomLabel: roomQueue ? roomQueue[0].label : ((level.rooms && level.rooms[0]) || level.name || 'Arena'),
     objectiveText: (level.objectives && level.objectives[0]) || 'Clear the area.',
     player: buildPlayer(mode),
-    enemies: buildEnemies(level, mode),
+    enemies: roomQueue ? roomQueue[0].enemies : allEnemies,
     pickups: buildPickups(level, mode, rng),
     elapsedMs: 0,
     itemsCollected: 0,
     scriptRules: parseScript(level.levelScript),
     log: [],
+    roomQueue, roomIndex: 0,
   };
   if (mode === 'platformer') {
     scene.groundY = GROUND_Y;

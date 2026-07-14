@@ -16,7 +16,7 @@ const SCENE = window.__EXPORTED_SCENE__;
 const MODE = window.__EXPORTED_MODE__;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const hud = { hp: document.getElementById('hp'), hpFill: document.getElementById('hpFill'), timer: document.getElementById('timer'), items: document.getElementById('items'), enemies: document.getElementById('enemies'), msg: document.getElementById('msg'), overlay: document.getElementById('overlay') };
+const hud = { hp: document.getElementById('hp'), hpFill: document.getElementById('hpFill'), room: document.getElementById('room'), timer: document.getElementById('timer'), items: document.getElementById('items'), enemies: document.getElementById('enemies'), msg: document.getElementById('msg'), overlay: document.getElementById('overlay') };
 
 const keys = new Set();
 window.addEventListener('keydown', e => { if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyW','KeyA','KeyS','KeyD'].includes(e.code)) e.preventDefault(); if (!keys.has(e.code)) pressedEdge.add(e.code); keys.add(e.code); });
@@ -43,6 +43,33 @@ function drawHumanoid(entity, pose) {
   ctx.restore();
 }
 function drawHealthBar(entity, pct) { const barY = entity.y - 8; ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(entity.x, barY, entity.w, 4); ctx.fillStyle = pct>0.5?'#22c55e':pct>0.25?'#f59e0b':'#dc2626'; ctx.fillRect(entity.x, barY, entity.w*Math.max(0,pct), 4); }
+
+let audioCtx = null;
+function beep(opts) {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  if (!audioCtx) { try { audioCtx = new AC(); } catch (e) { return; } }
+  const c = audioCtx;
+  if (c.state === 'suspended') c.resume().catch(function(){});
+  const freq = opts.freq, freqEnd = opts.freqEnd, duration = opts.duration || 0.1, type = opts.type || 'sine', gain = opts.gain || 0.15;
+  const osc = c.createOscillator(), g = c.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, c.currentTime);
+  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), c.currentTime + duration);
+  g.gain.setValueAtTime(gain, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + duration);
+  osc.connect(g); g.connect(c.destination);
+  osc.start(); osc.stop(c.currentTime + duration);
+}
+function sfxAttack() { beep({ freq:220, freqEnd:110, duration:0.08, type:'square', gain:0.14 }); }
+function sfxHit() { beep({ freq:150, freqEnd:60, duration:0.12, type:'sawtooth', gain:0.18 }); }
+function sfxDefeat() { beep({ freq:300, freqEnd:60, duration:0.3, type:'sawtooth', gain:0.16 }); }
+function sfxPickup() { beep({ freq:520, freqEnd:880, duration:0.14, type:'sine', gain:0.13 }); }
+function sfxJump() { beep({ freq:300, freqEnd:520, duration:0.1, type:'triangle', gain:0.11 }); }
+function sfxDamaged() { beep({ freq:180, freqEnd:90, duration:0.15, type:'square', gain:0.15 }); }
+function sfxRoomCleared() { [523, 659].forEach(function(f, i) { setTimeout(function() { beep({ freq:f, duration:0.16, type:'triangle', gain:0.15 }); }, i*100); }); }
+function sfxWin() { [440, 550, 660, 880].forEach(function(f, i) { setTimeout(function() { beep({ freq:f, duration:0.16, type:'triangle', gain:0.16 }); }, i*120); }); }
+function sfxLose() { beep({ freq:220, freqEnd:70, duration:0.6, type:'sawtooth', gain:0.17 }); }
 
 const GRAVITY = 1400, TERMINAL_VELOCITY = 900, JUMP_VELOCITY = -520;
 const ATTACK_RANGE = 46, ATTACK_COOLDOWN_MS = 350, ENEMY_ATTACK_RANGE = 30, ENEMY_ATTACK_COOLDOWN_MS = 800;
@@ -86,10 +113,12 @@ function updateHud() {
   hud.timer.textContent = (scene.elapsedMs/1000).toFixed(1) + 's';
   hud.items.textContent = scene.itemsCollected + ' item(s)';
   hud.enemies.textContent = scene.enemies.filter(e=>e.alive).length + '/' + scene.enemies.length + ' enemies';
+  hud.room.textContent = scene.roomQueue ? ('Room ' + (scene.roomIndex+1) + '/' + scene.roomQueue.length) : '';
 }
 
 function endGame(won) {
   status = won ? 'won' : 'lost';
+  if (won) sfxWin(); else sfxLose();
   hud.overlay.style.display = 'flex';
   hud.overlay.querySelector('h2').textContent = won ? 'Level Clear!' : 'Defeated';
   hud.overlay.querySelector('p').textContent = scene.objectiveText + ' (' + (scene.elapsedMs/1000).toFixed(1) + 's, ' + scene.itemsCollected + ' item(s))';
@@ -107,18 +136,35 @@ function updateArena(dt) {
   if (player.attackFlash>0) player.attackFlash -= dt*1000;
   if ((consumePressed('Space')||consumePressed('Enter')) && player.attackCooldown<=0) {
     player.attackCooldown = ATTACK_COOLDOWN_MS; player.attackFlash = 120;
-    for (const e of enemies) if (e.alive && centerDistance(player,e) <= ATTACK_RANGE) { e.hp -= Math.max(1, player.damage - (e.defense||0)); e.hitFlash=150; if (e.hp<=0) { e.alive=false; fireScriptEvent('enemyDefeated'); } }
+    let hitAny = false, defeatedAny = false;
+    for (const e of enemies) if (e.alive && centerDistance(player,e) <= ATTACK_RANGE) { hitAny = true; e.hp -= Math.max(1, player.damage - (e.defense||0)); e.hitFlash=150; if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); } }
+    if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+    if (hitAny || defeatedAny) sfxAttack();
   }
   for (const e of enemies) {
     if (!e.alive) continue;
     if (e.hitFlash>0) e.hitFlash -= dt*1000;
     const d = centerDistance(e, player);
     if (d > ENEMY_ATTACK_RANGE) { const ang = Math.atan2((player.y+player.h/2)-(e.y+e.h/2), (player.x+player.w/2)-(e.x+e.w/2)); e.x += Math.cos(ang)*e.speed*dt; e.y += Math.sin(ang)*e.speed*dt; clampToBounds(e, arena); e.walkPhase = (e.walkPhase||0) + dt*3; }
-    else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS; player.hp -= Math.max(1, e.damage - player.defense); fireScriptEvent('playerDamaged'); } }
+    else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS; player.hp -= Math.max(1, e.damage - player.defense); sfxDamaged(); fireScriptEvent('playerDamaged'); } }
   }
-  for (const p of pickups) { if (p.collected) continue; if (rectsOverlap(player,p)) { p.collected=true; scene.itemsCollected++; if (p.damageBonus) player.damage+=p.damageBonus; if (p.heal) player.hp=Math.min(player.maxHp, player.hp+p.heal); fireScriptEvent('itemCollected'); } }
+  for (const p of pickups) { if (p.collected) continue; if (rectsOverlap(player,p)) { p.collected=true; scene.itemsCollected++; if (p.damageBonus) player.damage+=p.damageBonus; if (p.heal) player.hp=Math.min(player.maxHp, player.hp+p.heal); sfxPickup(); fireScriptEvent('itemCollected'); } }
   if (player.hp<=0) { endGame(false); return; }
-  if (enemies.length && enemies.every(e=>!e.alive)) { fireScriptEvent('allEnemiesDefeated'); endGame(true); return; }
+  if (enemies.length && enemies.every(e=>!e.alive)) {
+    if (scene.roomQueue && scene.roomIndex < scene.roomQueue.length - 1) {
+      scene.roomIndex++;
+      const nextRoom = scene.roomQueue[scene.roomIndex];
+      scene.enemies = nextRoom.enemies;
+      scene.roomLabel = nextRoom.label;
+      scene.player.x = scene.arena.x + 24;
+      scene.player.y = scene.arena.y + scene.arena.h / 2 - scene.player.h / 2;
+      sfxRoomCleared();
+      showMessage('Room cleared — entering "' + scene.roomLabel + '"');
+      fireScriptEvent('roomCleared');
+      return;
+    }
+    fireScriptEvent('allEnemiesDefeated'); endGame(true); return;
+  }
 }
 
 function updatePlatformer(dt) {
@@ -129,7 +175,7 @@ function updatePlatformer(dt) {
   player.x += dx*player.speed*dt;
   player.x = Math.max(scene.arena.x, Math.min(scene.arena.x+scene.arena.w-player.w, player.x));
   if (dx) { player.walkPhase=(player.walkPhase||0)+dt*3; player.facing = dx>0?1:-1; }
-  if ((consumePressed('Space')||consumePressed('ArrowUp')||consumePressed('KeyW')) && player.onGround) { player.vy = JUMP_VELOCITY; player.onGround=false; }
+  if ((consumePressed('Space')||consumePressed('ArrowUp')||consumePressed('KeyW')) && player.onGround) { player.vy = JUMP_VELOCITY; player.onGround=false; sfxJump(); }
   player.vy = Math.min(TERMINAL_VELOCITY, player.vy + GRAVITY*dt);
   player.y += player.vy*dt;
   player.onGround = false;
@@ -139,7 +185,10 @@ function updatePlatformer(dt) {
   if (player.attackFlash>0) player.attackFlash -= dt*1000;
   if (consumePressed('Enter') && player.attackCooldown<=0) {
     player.attackCooldown = ATTACK_COOLDOWN_MS; player.attackFlash=120;
-    for (const e of enemies) if (e.alive && centerDistance(player,e)<=ATTACK_RANGE) { e.hp -= Math.max(1, player.damage-(e.defense||0)); e.hitFlash=150; if (e.hp<=0) { e.alive=false; fireScriptEvent('enemyDefeated'); } }
+    let hitAny = false, defeatedAny = false;
+    for (const e of enemies) if (e.alive && centerDistance(player,e)<=ATTACK_RANGE) { hitAny = true; e.hp -= Math.max(1, player.damage-(e.defense||0)); e.hitFlash=150; if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); } }
+    if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+    if (hitAny || defeatedAny) sfxAttack();
   }
   for (const e of enemies) {
     if (!e.alive) continue;
@@ -148,11 +197,11 @@ function updatePlatformer(dt) {
     if (Math.abs(e.x - e.patrolCenter) > 60) e.patrolDir *= -1;
     const overlapping = rectsOverlap(player, e);
     if (overlapping) {
-      if (player.vy > 60 && player.y+player.h - e.y < 16) { e.hp = 0; e.alive=false; player.vy = -300; fireScriptEvent('enemyDefeated'); }
-      else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer=ENEMY_ATTACK_COOLDOWN_MS; player.hp -= Math.max(1, e.damage-player.defense); fireScriptEvent('playerDamaged'); } }
+      if (player.vy > 60 && player.y+player.h - e.y < 16) { e.hp = 0; e.alive=false; player.vy = -300; sfxDefeat(); fireScriptEvent('enemyDefeated'); }
+      else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer=ENEMY_ATTACK_COOLDOWN_MS; player.hp -= Math.max(1, e.damage-player.defense); sfxDamaged(); fireScriptEvent('playerDamaged'); } }
     }
   }
-  for (const p of pickups) { if (p.collected) continue; if (rectsOverlap(player,p)) { p.collected=true; scene.itemsCollected++; if (p.damageBonus) player.damage+=p.damageBonus; if (p.heal) player.hp=Math.min(player.maxHp, player.hp+p.heal); fireScriptEvent('itemCollected'); } }
+  for (const p of pickups) { if (p.collected) continue; if (rectsOverlap(player,p)) { p.collected=true; scene.itemsCollected++; if (p.damageBonus) player.damage+=p.damageBonus; if (p.heal) player.hp=Math.min(player.maxHp, player.hp+p.heal); sfxPickup(); fireScriptEvent('itemCollected'); } }
   if (player.hp<=0) { endGame(false); return; }
   if (goal && rectsOverlap(player, goal)) { fireScriptEvent('allEnemiesDefeated'); endGame(true); return; }
   if (enemies.length && enemies.every(e=>!e.alive)) { fireScriptEvent('allEnemiesDefeated'); endGame(true); return; }
@@ -222,7 +271,7 @@ export function buildStandaloneHTML(scene, mode, title) {
     <canvas id="game" width="800" height="480"></canvas>
     <div id="hudbar">
       <div id="hpTrack"><div id="hpFill"></div></div>
-      <span id="hp"></span><span id="enemies"></span><span id="items"></span><span id="timer"></span>
+      <span id="hp"></span><span id="room"></span><span id="enemies"></span><span id="items"></span><span id="timer"></span>
     </div>
     <div id="msg"></div>
     <div id="overlay"><h2></h2><p></p></div>

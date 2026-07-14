@@ -290,4 +290,80 @@ test.describe('Play Engine module', () => {
     expect(content).toContain('<canvas');
     expect(errors).toEqual([]);
   });
+
+  test('a multi-room Arena level advances rooms as each is cleared, then wins on the last', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Multi-Room Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page); // generated levels always have 4-8 rooms
+    await openModule(page, 'Character Studio');
+    await generateOne(page, { subtypeIndex: 1 });
+    await generateOne(page, { subtypeIndex: 1 }); // two enemies -> two non-empty rooms (round-robin)
+    await page.evaluate(() => {
+      const store = window.__gfStore;
+      for (const enemy of store.project.collections.characters) {
+        enemy.statistics = enemy.statistics.map(s => (s.key === 'Health' ? { ...s, value: '10' } : s.key === 'Defense' ? { ...s, value: '0' } : s));
+      }
+      store.touch();
+    });
+    await openModule(page, 'Play Engine');
+
+    await startPlaying(page); // default Arena mode
+    const initial = await readScene(page);
+    expect(initial.roomQueue).toBeTruthy();
+    expect(initial.roomQueue.length).toBeGreaterThanOrEqual(2);
+    expect(initial.roomIndex).toBe(0);
+    const firstRoomEnemyId = initial.enemies[0].id;
+
+    await moveTowards(page, s => { const e = s.enemies.find(x => x.id === firstRoomEnemyId); return e && e.alive ? e : null; }, 40, 6000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(300);
+
+    const afterRoom1 = await readScene(page);
+    expect(afterRoom1.roomIndex).toBeGreaterThanOrEqual(1);
+    expect(afterRoom1.enemies[0].id).not.toBe(firstRoomEnemyId);
+
+    // Clear every remaining room until the level ends.
+    for (let round = 0; round < 5; round++) {
+      const s = await readScene(page);
+      if (!s) break;
+      const enemy = s.enemies.find(e => e.alive);
+      if (!enemy) break;
+      await moveTowards(page, sc => { const e = sc.enemies.find(x => x.alive); return e || null; }, 40, 6000);
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(300);
+    }
+    await expect(page.getByText('Level Clear!')).toBeVisible({ timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('Escape pauses and resumes real-time modes', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Pause Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await openModule(page, 'Play Engine');
+    await startPlaying(page);
+
+    const before = await readScene(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await expect(page.locator('.toast', { hasText: 'Paused' })).toBeVisible({ timeout: 2000 });
+
+    await page.keyboard.down('KeyD');
+    await page.waitForTimeout(400);
+    await page.keyboard.up('KeyD');
+    const whilePaused = await readScene(page);
+    expect(whilePaused.player.x).toBe(before.player.x); // frozen while paused
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+    await page.keyboard.down('KeyD');
+    await page.waitForTimeout(400);
+    await page.keyboard.up('KeyD');
+    const afterResume = await readScene(page);
+    expect(afterResume.player.x).toBeGreaterThan(before.player.x); // moving again
+
+    expect(errors).toEqual([]);
+  });
 });

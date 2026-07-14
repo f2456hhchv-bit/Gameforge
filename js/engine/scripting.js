@@ -11,6 +11,7 @@
 //   start                      fires once when the level begins
 //   enemyDefeated              fires every time any enemy is defeated
 //   allEnemiesDefeated         fires once when the last enemy is defeated
+//   roomCleared                fires every time an Arena-mode multi-room level advances a room
 //   itemCollected              fires every time a pickup is collected
 //   playerDamaged              fires every time the player takes damage
 //   timer <seconds>            fires once when elapsed time reaches <seconds>
