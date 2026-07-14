@@ -313,6 +313,7 @@ export function mountDashboard(container) {
         ['items', '🗡️ Item Studio'], ['combat', '⚔️ Combat Designer'], ['levels', '🗺️ Level Designer'],
         ['quests', '📯 Quest Designer'], ['dialogue', '💬 Dialogue Tree Designer'],
         ['tasks', '✅ Task Manager'], ['liveops', '📅 LiveOps Calendar'],
+        ['playEngine', '🕹️ Play Engine'],
         ['graph', '🕸️ Relationship Graph'], ['docs', '📄 Documentation'],
       ].map(([key, label]) => h('button', { class: 'btn-secondary justify-start', onclick: () => openEntity(key) }, label))),
     ]);

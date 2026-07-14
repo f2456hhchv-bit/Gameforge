@@ -1,6 +1,6 @@
 # GameForge Studio
 
-A complete, browser-based game design & development studio — think Unity + Notion + Figma + Trello + a local AI assistant, focused on pre-production and production planning. Runs **entirely locally**: no backend, no account, no network calls at runtime. Every project is stored in your browser's IndexedDB.
+A complete, browser-based game design & development studio — think Unity + Notion + Figma + Trello + a local AI assistant, focused on pre-production and production planning, with a genuine lightweight play engine to actually try what you've designed. Runs **entirely locally**: no backend, no account, no network calls at runtime. Every project is stored in your browser's IndexedDB.
 
 ## Running it
 
@@ -15,6 +15,7 @@ Then open `http://localhost:8080/index.html`. Note: opening `index.html` directl
 ## Modules
 
 - **Dashboard** — project stats, progress by area, milestones, recent activity.
+- **Play Engine** — a real, playable 2D prototype built live from your actual project data, not a mockup: pick a Level Designer level and hit Play to get a canvas-rendered top-down arena with a real game loop, WASD/arrow movement, AABB collision, melee combat resolved from Character Studio's real stat blocks (Health/Damage/Defense/Speed), item pickups from Item Studio (weapons boost damage, consumables heal), and — if the project has any — a Dialogue Tree Designer conversation played out as an intro before combat. Falls back to any enemies/items in the project when a level hasn't been explicitly linked yet. Clearing or failing a level can log a real entry straight into Playtesting Tracker. This is a lightweight runtime for fast iteration, not a full engine — no scripting, physics beyond simple collision, or asset pipeline.
 - **Game Designer** — pillars, core loop, USP, audience, difficulty, monetisation, session length, replayability, platform/competitor analysis, personas, risk analysis, SWOT, success metrics.
 - **World Builder** — 18 place types: biomes, regions, cities, settlements, landmarks/POIs, planets, galaxies, factions, continents, dimensions/planes, shrines/temples, ruins, trade routes, capital cities, colonies, wilderness preserves, underwater zones and sky zones/floating isles — with weather, climate, lore, resources, hazards, procedural rules, subtype-specific fields (patron deities, former civilizations, connected settlements and more), and (for factions) political structure and reputation tiers.
 - **Character Studio** — 20 character types: player, enemy, boss, elite, horde minion, boss add, NPC, merchant, specialist vendor, companion, tamed pet, wildlife, summon, rival, mentor, informant, hostage, guard, cultist and voice-only narrator — biography, stats, abilities, AI notes, loot, animations, voice, personality traits, sample dialogue, faction allegiance and relationship notes, plus subtype-specific fields (rivalry arcs, taming methods, intel reliability, elite modifiers and more).
@@ -83,6 +84,7 @@ Markdown, JSON, CSV and HTML are native. PDF uses the browser's print pipeline. 
 - `js/components/entityForm.js` — schema-driven field renderer (text/textarea/number/select/tags/list/stats/relation/relation-multi).
 - `js/generators/` — word banks + procedural generation helpers shared by every module and the assistant. `wordbank.js` alone carries 58 exported arrays/objects; the highest-leverage pools (name syllables, epithets, faction/creature/weapon vocab, lore hooks, quest verbs/targets, art/audio mood & lighting banks) were deliberately grown large so repeated one-click generation keeps producing fresh names, flavor text and prompts rather than visibly cycling.
 - `js/modules/` — one file per module; each exports a `mountX(container, opts)` function registered in `js/modules/registry.js`.
+- `js/engine/` — the Play Engine's runtime: `input.js` (keyboard manager), `physics.js` (AABB collision + stat parsing), `sceneBuilder.js` (turns a real Level/Character/Item entity graph into a playable scene), `dialogueRunner.js` (walks a Dialogue Tree Designer node graph as a visual-novel-style overlay). `js/modules/playEngine.js` owns the canvas game loop and HUD.
 - `js/taskHooks.js` — shared helper so any module can auto-create a linked production task.
 
 ### Rebuilding CSS

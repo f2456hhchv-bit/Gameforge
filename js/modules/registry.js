@@ -4,6 +4,7 @@
 export const MODULES = [
   { key: 'dashboard', label: 'Dashboard', icon: '📊', group: 'Overview', load: () => import('./dashboard.js').then(m => m.mountDashboard) },
   { key: 'graph', label: 'Relationship Graph', icon: '🕸️', group: 'Overview', load: () => import('./graph.js').then(m => m.mountGraph) },
+  { key: 'playEngine', label: 'Play Engine', icon: '🕹️', group: 'Play', load: () => import('./playEngine.js').then(m => m.mountPlayEngine) },
   { key: 'designer', label: 'Game Designer', icon: '🧭', group: 'Design', load: () => import('./designer.js').then(m => m.mountDesigner) },
   { key: 'world', label: 'World Builder', icon: '🌍', group: 'Design', load: () => import('./world.js').then(m => m.mountWorld) },
   { key: 'characters', label: 'Character Studio', icon: '🧑‍🎤', group: 'Design', load: () => import('./characters.js').then(m => m.mountCharacters) },
