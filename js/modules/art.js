@@ -23,6 +23,18 @@ export const SUBTYPES = [
   { key: 'texture-study', label: 'Texture Study', icon: '🧵' },
   { key: 'lighting-study', label: 'Lighting Study', icon: '💡' },
   { key: 'turnaround', label: 'Character Turnaround Set', icon: '🔄' },
+  { key: 'splash-screen', label: 'Splash Screen', icon: '🌅' },
+  { key: 'promo-poster', label: 'Promotional Poster', icon: '📰' },
+  { key: 'sprite-sheet', label: 'Sprite Sheet Animation', icon: '🎞️' },
+  { key: 'tileset', label: 'Tileset', icon: '🧱' },
+  { key: 'skybox', label: 'Skybox / Panorama', icon: '🌌' },
+  { key: 'creature-concept', label: 'Creature Concept', icon: '🦖' },
+  { key: 'prop-art', label: 'Prop Art', icon: '🪑' },
+  { key: 'foliage-study', label: 'Foliage / Vegetation Study', icon: '🌿' },
+  { key: 'color-script', label: 'Color Script', icon: '🌈' },
+  { key: 'storyboard', label: 'Storyboard', icon: '📋' },
+  { key: 'emote-icon', label: 'Emote Icon', icon: '😀' },
+  { key: 'collectible-art', label: 'Statue / Collectible Art', icon: '🗿' },
 ];
 
 const TRANSPARENCY_OPTIONS = ['Opaque background', 'Transparent PNG (alpha channel)', 'Green screen (chroma key removable)'];
@@ -49,6 +61,13 @@ const SUBTYPE_DEFAULTS = {
   'mood-board': { transparency: 0, exportFormat: 'JPEG (raster, no alpha)', aspectRatio: '16:9 Widescreen', resolution: '2048×2048 (hero asset)' },
   'lighting-study': { transparency: 0, exportFormat: 'PNG (raster)', aspectRatio: '4:3 Classic', resolution: '2048×2048 (hero asset)' },
   turnaround: { transparency: 1, exportFormat: 'PNG (raster)', aspectRatio: '4:3 Classic', resolution: '2048×2048 (hero asset)' },
+  'splash-screen': { transparency: 0, exportFormat: 'PNG (raster)', aspectRatio: '16:9 Widescreen', resolution: '3840×2160 (4K marketing)' },
+  'promo-poster': { transparency: 0, exportFormat: 'PNG (raster)', aspectRatio: '3:4 Portrait Cover', resolution: '3840×2160 (4K marketing)' },
+  'sprite-sheet': { transparency: 1, exportFormat: 'Sprite Sheet (PNG + JSON atlas)', aspectRatio: '1:1 Square', resolution: '2048×2048 (hero asset)' },
+  tileset: { transparency: 0, exportFormat: 'PNG (raster)', aspectRatio: '1:1 Square', resolution: '4096×4096 (tiling texture sheet)' },
+  skybox: { transparency: 0, exportFormat: 'PNG (raster)', aspectRatio: '21:9 Ultrawide', resolution: '3840×2160 (4K marketing)' },
+  'emote-icon': { transparency: 1, exportFormat: 'PNG (raster)', aspectRatio: '1:1 Square', resolution: '512×512 (icon/thumbnail)' },
+  'collectible-art': { transparency: 0, exportFormat: 'PNG (raster)', aspectRatio: '16:9 Widescreen', resolution: '3840×2160 (4K marketing)' },
 };
 function defaultsFor(subtype) {
   const d = SUBTYPE_DEFAULTS[subtype];
@@ -152,11 +171,21 @@ function generateVfxPassEntry(rng, index) {
   return { name, description: desc, subtype: 'vfx', ...base, promptText, links: {} };
 }
 
+function generateStoryboardEntry(rng, index) {
+  const base = randomBaseFields(rng, 'storyboard');
+  const panel = index + 1;
+  const name = `Storyboard — Panel ${panel}`;
+  const desc = `Panel ${panel} of a 4-panel sequence establishing a scene's staging and camera moves before production art begins.`;
+  const promptText = buildArtPromptText({ subjectName: name, subjectDesc: desc, ...base, animation: '' });
+  return { name, description: desc, subtype: 'storyboard', ...base, promptText, links: {} };
+}
+
 const GENERATORS = [
   { label: 'Generate Prompt', run: ({ subtype }) => generatePrompt(rngFor(Math.random()), subtype || 'concept') },
   { label: 'Generate Turnaround Set (4 angles)', run: ({ index }) => generateTurnaroundEntry(rngFor(Math.random() + index), index || 0) },
   { label: 'Generate Mood Board Time-of-Day Pass (4)', run: ({ index }) => generateMoodBoardEntry(rngFor(Math.random() + index), index || 0) },
   { label: 'Generate VFX Full Moveset Pass (4)', run: ({ index }) => generateVfxPassEntry(rngFor(Math.random() + index), index || 0) },
+  { label: 'Generate Storyboard Sequence (4 panels)', run: ({ index }) => generateStoryboardEntry(rngFor(Math.random() + index), index || 0) },
 ];
 
 function exportAllPrompts() {
@@ -188,7 +217,7 @@ export function mountArt(container, opts) {
         toast('Prompt text rebuilt from current fields', { type: 'success' });
       },
     }],
-    helpText: 'GameForge never generates images — only production-ready prompts for whatever image AI you use. Every prompt captures style, lighting, palette, camera, materials, scale, mood, animation, aspect ratio, resolution, post-processing and export requirements. Use the turnaround/mood-board/VFX-pass generators with a count of 4 to build a coherent multi-angle or multi-moment set in one click.',
+    helpText: 'GameForge never generates images — only production-ready prompts for whatever image AI you use, across 28 asset types including splash screens, promo posters, sprite sheets, tilesets, skyboxes, creature concepts, prop art, foliage studies, color scripts, storyboards, emote icons and collectible art. Every prompt captures style, lighting, palette, camera, materials, scale, mood, animation, aspect ratio, resolution, post-processing and export requirements. Use the turnaround/mood-board/VFX-pass/storyboard generators with a count of 4 to build a coherent multi-angle, multi-moment or multi-panel set in one click.',
   });
   return view.mount(container, opts);
 }
