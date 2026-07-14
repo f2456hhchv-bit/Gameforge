@@ -6,9 +6,9 @@ test.describe('Playtesting Tracker module', () => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Playtests Module Test');
     await openModule(page, 'Playtesting Tracker');
-    for (let i = 0; i < 7; i++) await generateOne(page, { subtypeIndex: i });
+    for (let i = 0; i < 13; i++) await generateOne(page, { subtypeIndex: i });
     const state = await projectState(page);
-    expect(state.counts.playtestSessions).toBe(7);
+    expect(state.counts.playtestSessions).toBe(13);
 
     const sessions = await page.evaluate(() => window.__gfStore.project.collections.playtestSessions);
     for (const s of sessions) {
@@ -18,7 +18,7 @@ test.describe('Playtesting Tracker module', () => {
       expect(s.sentimentScore).toBeGreaterThanOrEqual(1);
       expect(s.sentimentScore).toBeLessThanOrEqual(10);
     }
-    expect(new Set(sessions.map(s => s.subtype)).size).toBe(7);
+    expect(new Set(sessions.map(s => s.subtype)).size).toBe(13);
     expect(errors).toEqual([]);
   });
 

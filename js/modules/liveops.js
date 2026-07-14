@@ -2,6 +2,7 @@ import { createCollectionView } from '../components/collectionView.js';
 import { rngFor } from '../generators/procedural.js';
 import { pick, pickN } from '../util.js';
 import { store } from '../store.js';
+import { PRIORITIES } from '../schema.js';
 import { autoTask } from '../taskHooks.js';
 
 export const SUBTYPES = [
@@ -13,6 +14,13 @@ export const SUBTYPES = [
   { key: 'balance-patch', label: 'Balance Patch', icon: '⚖️' },
   { key: 'community-challenge', label: 'Community Challenge', icon: '🤝' },
   { key: 'double-xp-weekend', label: 'Double XP Weekend', icon: '⚡' },
+  { key: 'anniversary-event', label: 'Anniversary Event', icon: '🎂' },
+  { key: 'crossover-collab', label: 'Crossover Collab', icon: '🤜🤛' },
+  { key: 'esports-tournament', label: 'Esports Tournament', icon: '🏆' },
+  { key: 'charity-event', label: 'Charity Event', icon: '💝' },
+  { key: 'server-migration', label: 'Server Migration', icon: '🖧' },
+  { key: 'emergency-hotfix', label: 'Emergency Hotfix', icon: '🚑' },
+  { key: 'roadmap-teaser', label: 'Roadmap Teaser', icon: '🔭' },
 ];
 
 const STATUSES = ['Planned', 'In Production', 'Live', 'Completed', 'Cancelled'];
@@ -32,7 +40,7 @@ const KPI_TEMPLATES = [
   'Social share rate on event completion ≥ 2%.',
 ];
 
-const FIELDS = [
+const COMMON_FIELDS = [
   { key: 'startDate', label: 'Start Date', type: 'text', placeholder: 'YYYY-MM-DD' },
   { key: 'endDate', label: 'End Date', type: 'text', placeholder: 'YYYY-MM-DD' },
   { key: 'theme', label: 'Theme', type: 'text' },
@@ -44,6 +52,18 @@ const FIELDS = [
   { key: 'prerequisiteQuests', label: 'Prerequisite / Featured Quests', type: 'relation-multi', target: 'quests' },
   { key: 'featuredItems', label: 'Featured Items', type: 'relation-multi', target: 'items' },
 ];
+
+const EXTRA_FIELDS_BY_SUBTYPE = {
+  'anniversary-event': [{ key: 'yearsCelebrated', label: 'Years Celebrated', type: 'number' }],
+  'crossover-collab': [{ key: 'partnerIP', label: 'Partner IP / Franchise', type: 'text' }],
+  'esports-tournament': [{ key: 'prizePool', label: 'Prize Pool', type: 'text', placeholder: 'e.g. $50,000' }, { key: 'format', label: 'Tournament Format', type: 'text', placeholder: 'e.g. Double elimination, 16 teams' }],
+  'charity-event': [{ key: 'charityPartner', label: 'Charity Partner', type: 'text' }, { key: 'donationMechanic', label: 'Donation Mechanic', type: 'textarea' }],
+  'server-migration': [{ key: 'downtimeWindow', label: 'Downtime Window', type: 'text', placeholder: 'e.g. 2 hours, 3am-5am UTC' }, { key: 'affectedRegions', label: 'Affected Regions', type: 'tags' }],
+  'emergency-hotfix': [{ key: 'severity', label: 'Severity', type: 'select', options: PRIORITIES }, { key: 'issuesFixed', label: 'Issues Fixed', type: 'list' }],
+  'roadmap-teaser': [{ key: 'revealDate', label: 'Full Reveal Date', type: 'text', placeholder: 'YYYY-MM-DD' }],
+};
+
+const FIELDS = (subtype) => [...COMMON_FIELDS, ...(EXTRA_FIELDS_BY_SUBTYPE[subtype] || [])];
 
 const STATUS_CLASS = { Planned: 'badge-gray', 'In Production': 'badge-blue', Live: 'badge-green', Completed: 'badge-gray', Cancelled: 'badge-rose' };
 
@@ -72,15 +92,26 @@ export function generateLiveOpsEvent(rng, subtype) {
     'balance-patch': `Balance Patch ${Math.floor(rng() * 9)}.${Math.floor(rng() * 9)}`,
     'community-challenge': `Community Challenge: ${season}`,
     'double-xp-weekend': `${season} Double XP Weekend`,
+    'anniversary-event': `${1 + Math.floor(rng() * 9)}th Anniversary Celebration`,
+    'crossover-collab': `${season} × Crossover Collab`,
+    'esports-tournament': `${season} Championship`,
+    'charity-event': `${season} Charity Drive`,
+    'server-migration': `Server Migration — ${season} Window`,
+    'emergency-hotfix': `Emergency Hotfix ${Math.floor(rng() * 9)}.${Math.floor(rng() * 9)}.${Math.floor(rng() * 9)}`,
+    'roadmap-teaser': `${season} Roadmap Teaser`,
   };
   const startOffset = Math.floor(rng() * 60);
-  const duration = key === 'double-xp-weekend' ? 3 : key === 'battle-pass-season' ? 70 : 7 + Math.floor(rng() * 21);
+  const DURATION_BY_SUBTYPE = {
+    'double-xp-weekend': 3, 'battle-pass-season': 70, 'emergency-hotfix': 1, 'server-migration': 1,
+    'esports-tournament': 3, 'roadmap-teaser': 1, 'anniversary-event': 14,
+  };
+  const duration = DURATION_BY_SUBTYPE[key] || 7 + Math.floor(rng() * 21);
   const items = store.list('items');
   const quests = store.list('quests');
   const links = {};
   if (items.length) links.featuredItems = pickN(items, Math.min(items.length, 1 + Math.floor(rng() * 3)), rng).map(i => i.id);
   if (quests.length) links.prerequisiteQuests = pickN(quests, Math.min(quests.length, 1 + Math.floor(rng() * 2)), rng).map(q => q.id);
-  return {
+  const entry = {
     name: nameBySubtype[key],
     description: `A ${key.replace(/-/g, ' ')} centered on the ${season} theme.`,
     startDate: offsetDate(startOffset),
@@ -93,6 +124,14 @@ export function generateLiveOpsEvent(rng, subtype) {
     channels: pickN(CHANNELS, 2 + Math.floor(rng() * 2), rng),
     links,
   };
+  if (key === 'anniversary-event') entry.yearsCelebrated = 1 + Math.floor(rng() * 9);
+  if (key === 'crossover-collab') entry.partnerIP = pick(['a beloved animated series', 'a classic arcade franchise', 'a chart-topping musician', 'a rival studio\'s flagship IP', 'a popular anime property'], rng);
+  if (key === 'esports-tournament') { entry.prizePool = `$${(5 + Math.floor(rng() * 95)) * 1000}`; entry.format = pick(['Double elimination, 16 teams', 'Round robin group stage + finals', 'Single elimination, 32 players', 'Swiss format, 5 rounds'], rng); }
+  if (key === 'charity-event') { entry.charityPartner = pick(['a children\'s hospital fund', 'a wildlife conservation charity', 'a disaster relief organization', 'a local food bank network'], rng); entry.donationMechanic = pick(['A percentage of all in-game purchases during the window is donated.', 'Players unlock donation milestones by completing challenges.', 'A dedicated charity bundle donates 100% of proceeds.'], rng); }
+  if (key === 'server-migration') { entry.downtimeWindow = pick(['2 hours, 3am-5am UTC', '4 hours, overnight regional window', '30 minutes, rolling per-region'], rng); entry.affectedRegions = pickN(['North America', 'Europe', 'Asia-Pacific', 'South America', 'Oceania'], 1 + Math.floor(rng() * 3), rng); }
+  if (key === 'emergency-hotfix') { entry.severity = pick(PRIORITIES, rng); entry.issuesFixed = pickN(['Progression-blocking save corruption', 'Exploit allowing infinite currency', 'Crash on matchmaking entry', 'Missing localization strings in EU build'], 1 + Math.floor(rng() * 2), rng); }
+  if (key === 'roadmap-teaser') entry.revealDate = offsetDate(startOffset + duration + 14 + Math.floor(rng() * 30));
+  return entry;
 }
 
 const GENERATORS = [
@@ -112,7 +151,7 @@ export function mountLiveOps(container, opts) {
       category: 'design', estimateHours: 6, title: (i) => `Plan LiveOps event: ${i.name}`,
       description: `Schedule content, rewards and marketing channels for "${item.name}".`,
     }),
-    helpText: 'Seasonal events, limited-time modes, store rotations, battle pass seasons, content drops, balance patches, community challenges and double-XP weekends — dates, theme, rewards, monetization hooks, target KPIs and marketing channels, linkable to the quests/items featured in the event.',
+    helpText: '15 event types — seasonal events, limited-time modes, store rotations, battle pass seasons, content drops, balance patches, community challenges, double-XP weekends, anniversary events, crossover collabs, esports tournaments, charity events, server migrations, emergency hotfixes and roadmap teasers — dates, theme, rewards, monetization hooks, target KPIs, marketing channels and subtype-specific fields (prize pools, charity partners, downtime windows, severity and more), linkable to the quests/items featured in the event.',
   });
   return view.mount(container, opts);
 }

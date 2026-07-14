@@ -6,9 +6,9 @@ test.describe('LiveOps Calendar module', () => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'LiveOps Module Test');
     await openModule(page, 'LiveOps Calendar');
-    for (let i = 0; i < 8; i++) await generateOne(page, { subtypeIndex: i });
+    for (let i = 0; i < 15; i++) await generateOne(page, { subtypeIndex: i });
     const state = await projectState(page);
-    expect(state.counts.liveOpsEvents).toBe(8);
+    expect(state.counts.liveOpsEvents).toBe(15);
 
     const events = await page.evaluate(() => window.__gfStore.project.collections.liveOpsEvents);
     for (const e of events) {
@@ -18,7 +18,7 @@ test.describe('LiveOps Calendar module', () => {
       expect(e.rewards.length).toBeGreaterThan(0);
       expect(e.status).toBeTruthy();
     }
-    expect(new Set(events.map(e => e.subtype)).size).toBe(8);
+    expect(new Set(events.map(e => e.subtype)).size).toBe(15);
     expect(errors).toEqual([]);
   });
 

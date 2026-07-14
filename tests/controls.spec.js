@@ -6,9 +6,9 @@ test.describe('Controls Mapping module', () => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Controls Module Test');
     await openModule(page, 'Controls Mapping');
-    for (let i = 0; i < 5; i++) await generateOne(page, { subtypeIndex: i });
+    for (let i = 0; i < 8; i++) await generateOne(page, { subtypeIndex: i });
     const state = await projectState(page);
-    expect(state.counts.controlBindings).toBe(5);
+    expect(state.counts.controlBindings).toBe(8);
 
     const bindings = await page.evaluate(() => window.__gfStore.project.collections.controlBindings);
     for (const b of bindings) {
@@ -16,7 +16,7 @@ test.describe('Controls Mapping module', () => {
       expect(b.defaultBinding).toBeTruthy();
       expect(b.context).toBeTruthy();
     }
-    expect(new Set(bindings.map(b => b.subtype)).size).toBe(5);
+    expect(new Set(bindings.map(b => b.subtype)).size).toBe(8);
     expect(errors).toEqual([]);
   });
 

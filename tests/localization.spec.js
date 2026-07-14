@@ -6,9 +6,9 @@ test.describe('Localization Manager module', () => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Localization Module Test');
     await openModule(page, 'Localization Manager');
-    for (let i = 0; i < 8; i++) await generateOne(page, { subtypeIndex: i });
+    for (let i = 0; i < 14; i++) await generateOne(page, { subtypeIndex: i });
     const state = await projectState(page);
-    expect(state.counts.locStrings).toBe(8);
+    expect(state.counts.locStrings).toBe(14);
 
     const strings = await page.evaluate(() => window.__gfStore.project.collections.locStrings);
     for (const s of strings) {
@@ -16,7 +16,7 @@ test.describe('Localization Manager module', () => {
       expect(s.targetLanguages.length).toBeGreaterThan(0);
       expect(s.translationStatus).toBe('Not Started');
     }
-    expect(new Set(strings.map(s => s.subtype)).size).toBe(8);
+    expect(new Set(strings.map(s => s.subtype)).size).toBe(14);
     expect(errors).toEqual([]);
   });
 

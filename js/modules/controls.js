@@ -9,12 +9,16 @@ export const SUBTYPES = [
   { key: 'touch-mobile', label: 'Touch / Mobile', icon: '📱' },
   { key: 'vr-motion', label: 'VR Motion Controller', icon: '🥽' },
   { key: 'accessibility-remap', label: 'Accessibility Remap', icon: '♿' },
+  { key: 'cloud-gaming', label: 'Cloud Gaming', icon: '☁️' },
+  { key: 'steam-deck-handheld', label: 'Steam Deck / Handheld', icon: '🕹️' },
+  { key: 'motion-control-mobile', label: 'Motion Control (Mobile)', icon: '📳' },
 ];
 
 const ACTIONS = [
   'Jump', 'Sprint', 'Crouch / Slide', 'Interact', 'Primary Attack', 'Secondary Attack / Block',
   'Dodge / Roll', 'Aim / Zoom', 'Reload', 'Use Item', 'Open Map', 'Open Inventory', 'Pause Menu',
   'Ping', 'Emote', 'Photo Mode Toggle', 'Quick Save', 'Switch Weapon', 'Melee', 'Special Ability',
+  'Toggle Run', 'Lock-On Target', 'Cycle Ability', 'Vehicle Boost', 'Mute Voice Chat',
 ];
 const BINDINGS_BY_SUBTYPE = {
   'keyboard-mouse': ['Space', 'Left Shift', 'Left Ctrl', 'E', 'Left Mouse Button', 'Right Mouse Button', 'Left Alt', 'Tab', 'I', 'Esc', 'Q', 'B', 'F9', 'R', 'Middle Mouse Button'],
@@ -22,6 +26,9 @@ const BINDINGS_BY_SUBTYPE = {
   'touch-mobile': ['Tap right action button', 'Swipe up', 'On-screen joystick', 'Double-tap screen', 'Tap and hold', 'Two-finger tap', 'Tap left action button'],
   'vr-motion': ['Trigger squeeze', 'Grip button', 'Thumbstick push', 'Physical arm swing', 'Head-gaze + trigger', 'Controller point + trigger', 'Face button on controller'],
   'accessibility-remap': ['Single-switch scan input', 'Hold-to-toggle alternative', 'Sip-and-puff mapped input', 'Eye-tracking dwell click', 'One-handed remap preset', 'Voice command'],
+  'cloud-gaming': ['Touch overlay button', 'Bluetooth controller button', 'Browser keyboard passthrough', 'Cloud-service gesture overlay'],
+  'steam-deck-handheld': ['Back paddle L4', 'Back paddle R4', 'Trackpad click', 'Gyro tilt', 'Handheld D-pad', 'Quick Access Button'],
+  'motion-control-mobile': ['Device tilt left/right', 'Shake gesture', 'Device tilt forward', 'Two-finger pinch + tilt'],
 };
 const CONTEXTS = ['Gameplay', 'Menu / UI', 'Vehicle / Mount', 'Combat', 'Photo Mode', 'Global'];
 const HOLD_OR_PRESS = ['Press', 'Hold', 'Double-tap', 'Toggle'];
@@ -60,8 +67,8 @@ export function generateControlBinding(rng, subtype) {
     rebindable: key === 'accessibility-remap' ? 'Yes' : (rng() < 0.85 ? 'Yes' : 'No'),
     holdOrPress: pick(HOLD_OR_PRESS, rng),
     iconNotes: `Needs a ${SUBTYPES.find(s => s.key === key)?.label || key} button-prompt icon for "${defaultBinding}".`,
-    conflictNotes: '',
-    accessibilityNotes: key === 'accessibility-remap' ? 'Verify this remap works with the target assistive device before shipping.' : '',
+    conflictNotes: key === 'cloud-gaming' ? 'Check for conflicts with the streaming client\'s own overlay shortcuts.' : '',
+    accessibilityNotes: key === 'accessibility-remap' ? 'Verify this remap works with the target assistive device before shipping.' : (key === 'motion-control-mobile' ? 'Always provide a non-motion alternative for players who can\'t use tilt/shake input.' : ''),
   };
 }
 
@@ -102,7 +109,7 @@ export function mountControls(container, opts) {
       category: 'code', estimateHours: 1, title: (i) => `Wire up input binding: ${i.name}`,
       description: `Implement and expose "${item.actionName}" for rebinding on ${item.subtype?.replace(/-/g, ' ')}.`,
     }),
-    helpText: 'Keyboard & mouse, gamepad, touch/mobile, VR motion and accessibility-remap input bindings — default/alternate binding, context, rebindability, hold-vs-press behaviour, button-prompt icon notes, conflicts and accessibility notes. Use "Generate Standard Action Set" to draft the 6 most common actions for a platform in one click.',
+    helpText: '8 input types — keyboard & mouse, gamepad, touch/mobile, VR motion, accessibility-remap, cloud gaming, Steam Deck/handheld and mobile motion control — default/alternate binding, context, rebindability, hold-vs-press behaviour, button-prompt icon notes, conflicts and accessibility notes. Use "Generate Standard Action Set" to draft the 6 most common actions for a platform in one click.',
   });
   return view.mount(container, opts);
 }

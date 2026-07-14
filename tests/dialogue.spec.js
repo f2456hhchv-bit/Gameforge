@@ -6,9 +6,9 @@ test.describe('Dialogue Tree Designer module', () => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Dialogue Module Test');
     await openModule(page, 'Dialogue Tree Designer');
-    for (let i = 0; i < 6; i++) await generateOne(page, { subtypeIndex: i });
+    for (let i = 0; i < 12; i++) await generateOne(page, { subtypeIndex: i });
     const state = await projectState(page);
-    expect(state.counts.dialogueNodes).toBe(6);
+    expect(state.counts.dialogueNodes).toBe(12);
 
     const nodes = await page.evaluate(() => window.__gfStore.project.collections.dialogueNodes);
     for (const n of nodes) {
@@ -16,7 +16,7 @@ test.describe('Dialogue Tree Designer module', () => {
       expect(n.sceneName).toBeTruthy();
       expect(n.tone).toBeTruthy();
     }
-    expect(new Set(nodes.map(n => n.subtype)).size).toBe(6);
+    expect(new Set(nodes.map(n => n.subtype)).size).toBe(12);
     expect(errors).toEqual([]);
   });
 

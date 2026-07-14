@@ -6,9 +6,9 @@ test.describe('Analytics Designer module', () => {
     const errors = collectConsoleErrors(page);
     await createProject(page, 'Analytics Module Test');
     await openModule(page, 'Analytics Designer');
-    for (let i = 0; i < 8; i++) await generateOne(page, { subtypeIndex: i });
+    for (let i = 0; i < 14; i++) await generateOne(page, { subtypeIndex: i });
     const state = await projectState(page);
-    expect(state.counts.telemetryEvents).toBe(8);
+    expect(state.counts.telemetryEvents).toBe(14);
 
     const events = await page.evaluate(() => window.__gfStore.project.collections.telemetryEvents);
     for (const e of events) {
@@ -17,7 +17,7 @@ test.describe('Analytics Designer module', () => {
       expect(e.funnelStage).toBeTruthy();
       expect(e.platformScope.length).toBeGreaterThan(0);
     }
-    expect(new Set(events.map(e => e.subtype)).size).toBe(8);
+    expect(new Set(events.map(e => e.subtype)).size).toBe(14);
     expect(errors).toEqual([]);
   });
 

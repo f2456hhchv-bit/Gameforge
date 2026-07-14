@@ -13,6 +13,12 @@ export const SUBTYPES = [
   { key: 'social-event', label: 'Social Event', icon: '👥' },
   { key: 'tutorial-event', label: 'Tutorial Event', icon: '🎓' },
   { key: 'combat-event', label: 'Combat Event', icon: '⚔️' },
+  { key: 'ui-interaction-event', label: 'UI Interaction Event', icon: '🖱️' },
+  { key: 'ad-event', label: 'Ad Event', icon: '📺' },
+  { key: 'accessibility-event', label: 'Accessibility Event', icon: '♿' },
+  { key: 'performance-event', label: 'Performance Event', icon: '⚡' },
+  { key: 'onboarding-funnel-event', label: 'Onboarding Funnel Event', icon: '🚪' },
+  { key: 'churn-prediction-event', label: 'Churn Prediction Event', icon: '📉' },
 ];
 
 const FUNNEL_STAGES = ['Acquisition', 'Onboarding', 'Core Loop', 'Monetization', 'Retention', 'Churn Risk'];
@@ -20,6 +26,8 @@ const FUNNEL_BY_SUBTYPE = {
   'session-event': 'Retention', 'progression-event': 'Core Loop', 'monetization-event': 'Monetization',
   'engagement-event': 'Retention', 'error-event': 'Churn Risk', 'social-event': 'Retention',
   'tutorial-event': 'Onboarding', 'combat-event': 'Core Loop',
+  'ui-interaction-event': 'Core Loop', 'ad-event': 'Monetization', 'accessibility-event': 'Onboarding',
+  'performance-event': 'Churn Risk', 'onboarding-funnel-event': 'Onboarding', 'churn-prediction-event': 'Churn Risk',
 };
 const EVENT_NAMES_BY_SUBTYPE = {
   'session-event': ['session_start', 'session_end', 'app_foreground', 'app_background'],
@@ -30,6 +38,12 @@ const EVENT_NAMES_BY_SUBTYPE = {
   'social-event': ['party_formed', 'friend_added', 'chat_message_sent', 'guild_joined'],
   'tutorial-event': ['tutorial_step_started', 'tutorial_step_completed', 'tutorial_skipped'],
   'combat-event': ['enemy_defeated', 'player_death', 'boss_phase_change', 'ability_used'],
+  'ui-interaction-event': ['button_clicked', 'menu_opened', 'menu_closed', 'tooltip_viewed'],
+  'ad-event': ['ad_requested', 'ad_shown', 'ad_completed', 'ad_skipped', 'ad_reward_granted'],
+  'accessibility-event': ['colourblind_mode_enabled', 'subtitle_size_changed', 'remap_applied', 'screen_reader_enabled'],
+  'performance-event': ['fps_drop_detected', 'memory_warning', 'load_time_recorded', 'thermal_throttle_detected'],
+  'onboarding-funnel-event': ['onboarding_started', 'onboarding_step_reached', 'onboarding_completed', 'onboarding_abandoned'],
+  'churn-prediction-event': ['session_gap_detected', 'engagement_score_computed', 'win_back_offer_shown', 'win_back_offer_accepted'],
 };
 const PARAM_TEMPLATES_BY_SUBTYPE = {
   'session-event': [{ key: 'session_id', value: 'string' }, { key: 'duration_ms', value: 'int' }],
@@ -40,6 +54,12 @@ const PARAM_TEMPLATES_BY_SUBTYPE = {
   'social-event': [{ key: 'party_size', value: 'int' }, { key: 'guild_id', value: 'string' }],
   'tutorial-event': [{ key: 'step_id', value: 'string' }, { key: 'skipped', value: 'bool' }],
   'combat-event': [{ key: 'enemy_id', value: 'string' }, { key: 'ability_id', value: 'string' }, { key: 'damage_dealt', value: 'int' }],
+  'ui-interaction-event': [{ key: 'element_id', value: 'string' }, { key: 'screen_name', value: 'string' }],
+  'ad-event': [{ key: 'ad_network', value: 'string' }, { key: 'placement_id', value: 'string' }, { key: 'reward_type', value: 'string' }],
+  'accessibility-event': [{ key: 'setting_name', value: 'string' }, { key: 'new_value', value: 'string' }],
+  'performance-event': [{ key: 'fps', value: 'int' }, { key: 'memory_mb', value: 'int' }, { key: 'device_model', value: 'string' }],
+  'onboarding-funnel-event': [{ key: 'step_index', value: 'int' }, { key: 'time_to_reach_ms', value: 'int' }],
+  'churn-prediction-event': [{ key: 'days_since_last_session', value: 'int' }, { key: 'churn_risk_score', value: 'float' }],
 };
 const TRIGGERS_BY_SUBTYPE = {
   'session-event': 'Fired on app foreground/background transitions and clean session boundaries.',
@@ -50,6 +70,12 @@ const TRIGGERS_BY_SUBTYPE = {
   'social-event': 'Fired on party, friend and guild social actions.',
   'tutorial-event': 'Fired at the start/end of each onboarding step.',
   'combat-event': 'Fired on notable combat state changes (kills, deaths, phase changes, ability use).',
+  'ui-interaction-event': 'Fired on notable UI interactions to build heatmaps of menu usage.',
+  'ad-event': 'Fired at each stage of a rewarded/interstitial ad impression.',
+  'accessibility-event': 'Fired whenever a player changes an accessibility setting — used to prioritize future a11y work.',
+  'performance-event': 'Fired automatically when device performance drops below target thresholds.',
+  'onboarding-funnel-event': 'Fired at each onboarding step to compute drop-off rates per step.',
+  'churn-prediction-event': 'Fired by the backend churn model, never client-initiated.',
 };
 
 const FIELDS = [
@@ -105,7 +131,7 @@ export function mountAnalytics(container, opts) {
       category: 'code', estimateHours: 1, title: (i) => `Implement telemetry event: ${i.name}`,
       description: `Wire up the "${item.eventName}" event with its parameters across the target platforms.`,
     }),
-    helpText: 'Session, progression, monetization, engagement, error, social, tutorial and combat telemetry events — snake_case event name, typed parameters, trigger condition, funnel stage, priority, platform scope and a sample payload, linkable to the design doc that specifies the feature.',
+    helpText: '14 event types — session, progression, monetization, engagement, error, social, tutorial, combat, UI interaction, ad, accessibility, performance, onboarding-funnel and churn-prediction telemetry events — snake_case event name, typed parameters, trigger condition, funnel stage, priority, platform scope and a sample payload, linkable to the design doc that specifies the feature.',
   });
   return view.mount(container, opts);
 }
