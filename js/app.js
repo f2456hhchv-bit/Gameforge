@@ -280,7 +280,7 @@ function openAccentPicker() {
   openModal(content, { title: 'Accent Colour', width: '360px' });
 }
 
-const EXCEL_EXPORT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries', 'achievements', 'tasks'];
+const EXCEL_EXPORT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries', 'achievements', 'dialogueNodes', 'playtestSessions', 'liveOpsEvents', 'locStrings', 'telemetryEvents', 'controlBindings', 'tasks'];
 
 function flattenForSheet(item) {
   const row = { id: item.id, name: item.name || item.title || '', subtype: item.subtype || '' };

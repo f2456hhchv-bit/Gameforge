@@ -12,7 +12,7 @@ import { SUBTYPES as QUEST_SUBTYPES } from './quests.js';
 
 const TASK_CATEGORIES = ['design', 'art', 'code', 'audio', 'writing', 'qa', 'general'];
 const STATUS_LABELS = { backlog: 'Backlog', todo: 'To Do', 'in-progress': 'In Progress', review: 'Review', done: 'Done' };
-const CONTENT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries', 'achievements'];
+const CONTENT_COLLECTIONS = ['designDocs', 'biomes', 'characters', 'items', 'combatEntries', 'levels', 'quests', 'artPrompts', 'uiScreens', 'audioEntries', 'achievements', 'dialogueNodes', 'playtestSessions', 'liveOpsEvents', 'locStrings', 'telemetryEvents', 'controlBindings'];
 
 function taskStatusBreakdown(tasks) {
   return TASK_STATUSES.map(s => ({ label: STATUS_LABELS[s], value: tasks.filter(t => t.status === s).length }));
@@ -311,7 +311,8 @@ export function mountDashboard(container) {
       h('div', { class: 'grid grid-cols-2 gap-2' }, [
         ['designer', '🧭 Game Designer'], ['world', '🌍 World Builder'], ['characters', '🧑‍🎤 Character Studio'],
         ['items', '🗡️ Item Studio'], ['combat', '⚔️ Combat Designer'], ['levels', '🗺️ Level Designer'],
-        ['quests', '📯 Quest Designer'], ['tasks', '✅ Task Manager'],
+        ['quests', '📯 Quest Designer'], ['dialogue', '💬 Dialogue Tree Designer'],
+        ['tasks', '✅ Task Manager'], ['liveops', '📅 LiveOps Calendar'],
         ['graph', '🕸️ Relationship Graph'], ['docs', '📄 Documentation'],
       ].map(([key, label]) => h('button', { class: 'btn-secondary justify-start', onclick: () => openEntity(key) }, label))),
     ]);

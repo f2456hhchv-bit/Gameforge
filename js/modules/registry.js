@@ -11,12 +11,18 @@ export const MODULES = [
   { key: 'combat', label: 'Combat Designer', icon: '⚔️', group: 'Design', load: () => import('./combat.js').then(m => m.mountCombat) },
   { key: 'levels', label: 'Level Designer', icon: '🗺️', group: 'Design', load: () => import('./levels.js').then(m => m.mountLevels) },
   { key: 'quests', label: 'Quest Designer', icon: '📯', group: 'Design', load: () => import('./quests.js').then(m => m.mountQuests) },
+  { key: 'dialogue', label: 'Dialogue Tree Designer', icon: '💬', group: 'Design', load: () => import('./dialogue.js').then(m => m.mountDialogue) },
   { key: 'art', label: 'Art Director', icon: '🎨', group: 'Production', load: () => import('./art.js').then(m => m.mountArt) },
   { key: 'ui', label: 'UI Designer', icon: '🖥️', group: 'Production', load: () => import('./uiDesigner.js').then(m => m.mountUIDesigner) },
   { key: 'audio', label: 'Audio Designer', icon: '🔊', group: 'Production', load: () => import('./audio.js').then(m => m.mountAudio) },
+  { key: 'controls', label: 'Controls Mapping', icon: '🎮', group: 'Production', load: () => import('./controls.js').then(m => m.mountControls) },
   { key: 'tasks', label: 'Task Manager', icon: '✅', group: 'Production', load: () => import('./tasks.js').then(m => m.mountTasks) },
   { key: 'achievements', label: 'Achievements', icon: '🏆', group: 'Production', load: () => import('./achievements.js').then(m => m.mountAchievements) },
   { key: 'docs', label: 'Documentation', icon: '📄', group: 'Production', load: () => import('./docs.js').then(m => m.mountDocs) },
+  { key: 'playtests', label: 'Playtesting Tracker', icon: '🧪', group: 'Live Ops', load: () => import('./playtests.js').then(m => m.mountPlaytests) },
+  { key: 'liveops', label: 'LiveOps Calendar', icon: '📅', group: 'Live Ops', load: () => import('./liveops.js').then(m => m.mountLiveOps) },
+  { key: 'localization', label: 'Localization Manager', icon: '🌐', group: 'Live Ops', load: () => import('./localization.js').then(m => m.mountLocalization) },
+  { key: 'analytics', label: 'Analytics Designer', icon: '📈', group: 'Live Ops', load: () => import('./analytics.js').then(m => m.mountAnalytics) },
 ];
 
 export function getModule(key) {
@@ -32,6 +38,12 @@ export const COLLECTION_TO_MODULE = {
   artPrompts: 'art',
   uiScreens: 'ui',
   audioEntries: 'audio',
+  dialogueNodes: 'dialogue',
+  playtestSessions: 'playtests',
+  liveOpsEvents: 'liveops',
+  locStrings: 'localization',
+  telemetryEvents: 'analytics',
+  controlBindings: 'controls',
 };
 
 export function resolveModuleKey(target) {
