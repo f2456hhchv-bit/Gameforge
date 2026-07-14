@@ -7,6 +7,7 @@ import { store } from '../store.js';
 import { pick, pickN } from '../util.js';
 import { statNum } from './physics.js';
 import { parseScript } from './scripting.js';
+import { applyStatus } from './statusEffects.js';
 
 export const ARENA = { x: 20, y: 20, w: 760, h: 440 };
 const ENTITY_SIZE = 28;
@@ -33,6 +34,9 @@ function buildPlayer(mode) {
     attackCooldown: 0,
     attackFlash: 0,
     walkPhase: 0,
+    abilityName: (playerChar?.abilities && playerChar.abilities[0]) || 'Special Strike',
+    abilityCooldown: 0,
+    abilityCooldownTurns: 0,
   };
   if (mode === 'platformer') { base.vy = 0; base.onGround = true; base.facing = 1; }
   return base;
@@ -55,7 +59,13 @@ function buildEnemies(level, mode) {
       defense: statNum(c.statistics, 'Defense', 0),
       speed: Math.max(30, statNum(c.statistics, 'Speed', 4) * 18),
       attackTimer: 0, alive: true, hitFlash: 0, walkPhase: i * 0.3,
+      enraged: false,
     };
+    // Elites carry a real innate damage-absorbing Shield from the moment they
+    // spawn; bosses instead get a one-time mid-fight enrage phase (see
+    // Play Engine's boss-enrage check), so the two subtypes read differently
+    // in actual play, not just in a stat sheet nobody sees.
+    if (c.subtype === 'elite') applyStatus(enemy, 'Shielded', { shieldHp: Math.round(hp * 0.3), duration: 999999 });
     if (mode === 'platformer') {
       enemy.x = ARENA.x + 220 + i * 130;
       enemy.y = GROUND_Y - ENTITY_SIZE;

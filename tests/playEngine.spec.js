@@ -366,4 +366,143 @@ test.describe('Play Engine module', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('an Elite enemy carries a real innate Shield that absorbs damage before real HP loss', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Elite Shield Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await openModule(page, 'Character Studio');
+    await generateOne(page, { subtypeIndex: 1 }); // enemy (subtype overridden to elite below)
+    await page.evaluate(() => {
+      const store = window.__gfStore;
+      const enemy = store.project.collections.characters[0];
+      enemy.subtype = 'elite';
+      enemy.statistics = enemy.statistics.map(s => (s.key === 'Health' ? { ...s, value: '50' } : s.key === 'Defense' ? { ...s, value: '0' } : s));
+      store.touch();
+    });
+    await openModule(page, 'Play Engine');
+
+    await startPlaying(page);
+    const initial = await readScene(page);
+    const enemyId = initial.enemies[0].id;
+    expect(initial.enemies[0].maxHp).toBe(50);
+    const shield = initial.enemies[0].statusEffects.find(s => s.type === 'Shielded');
+    expect(shield).toBeTruthy();
+    expect(shield.shieldHp).toBe(15); // 50 * 0.3
+
+    await moveTowards(page, s => { const e = s.enemies.find(x => x.id === enemyId); return e && e.alive ? e : null; }, 40, 6000);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+    const afterOneHit = await readScene(page);
+    const enemyAfterOneHit = afterOneHit.enemies.find(e => e.id === enemyId);
+    // Player's default 12 damage is fully absorbed by the 15-point shield —
+    // real HP must not have moved yet.
+    expect(enemyAfterOneHit.hp).toBe(50);
+    expect(enemyAfterOneHit.statusEffects.find(s => s.type === 'Shielded').shieldHp).toBeLessThan(15);
+
+    await page.waitForTimeout(400);
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+    const afterTwoHits = await readScene(page);
+    const enemyAfterTwoHits = afterTwoHits.enemies.find(e => e.id === enemyId);
+    // The remaining shield (3) absorbs part of the second hit; the rest spills into real HP.
+    expect(enemyAfterTwoHits.hp).toBeLessThan(50);
+    expect(errors).toEqual([]);
+  });
+
+  test('the player\'s special ability (E) deals bonus damage, applies a Burning DoT, and goes on cooldown', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Ability Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await openModule(page, 'Character Studio');
+    await generateOne(page, { subtypeIndex: 1 }); // enemy
+    await page.evaluate(() => {
+      const store = window.__gfStore;
+      const enemy = store.project.collections.characters[0];
+      enemy.statistics = enemy.statistics.map(s => (s.key === 'Health' ? { ...s, value: '200' } : s.key === 'Defense' ? { ...s, value: '0' } : s));
+      store.touch();
+    });
+    await openModule(page, 'Play Engine');
+
+    await startPlaying(page);
+    const initial = await readScene(page);
+    const enemyId = initial.enemies[0].id;
+
+    await moveTowards(page, s => { const e = s.enemies.find(x => x.id === enemyId); return e && e.alive ? e : null; }, 60, 6000);
+    await page.keyboard.press('KeyE');
+    await page.waitForTimeout(200);
+
+    const afterAbility = await readScene(page);
+    const enemyAfterAbility = afterAbility.enemies.find(e => e.id === enemyId);
+    expect(enemyAfterAbility.hp).toBeLessThan(200);
+    expect(enemyAfterAbility.statusEffects.find(s => s.type === 'Burning')).toBeTruthy();
+    const hpRightAfterAbility = enemyAfterAbility.hp;
+
+    // The Burning DoT should keep ticking the enemy's HP down over time,
+    // independent of any further player action.
+    await page.waitForTimeout(1200);
+    const afterBurnTicks = await readScene(page);
+    const enemyAfterBurnTicks = afterBurnTicks.enemies.find(e => e.id === enemyId);
+    expect(enemyAfterBurnTicks.hp).toBeLessThan(hpRightAfterAbility);
+
+    // Cooldown-gated: pressing E again immediately should not double-apply.
+    const hpBeforeSecondPress = enemyAfterBurnTicks.hp;
+    await page.keyboard.press('KeyE');
+    await page.waitForTimeout(100);
+    const afterSecondPress = await readScene(page);
+    const enemyAfterSecondPress = afterSecondPress.enemies.find(e => e.id === enemyId);
+    expect(enemyAfterSecondPress.hp).toBeCloseTo(hpBeforeSecondPress, 0);
+
+    const hudText = await activePane(page).innerText();
+    expect(hudText).toMatch(/✨/);
+    expect(errors).toEqual([]);
+  });
+
+  test('a boss enemy enters a real enrage phase (mechanical stat change) below 30% HP and fires the bossEnraged script trigger', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Boss Enrage Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await page.evaluate(() => {
+      const store = window.__gfStore;
+      const level = store.project.collections.levels[0];
+      level.levelScript = 'on bossEnraged: message "The boss is furious!"';
+      store.touch();
+    });
+    await openModule(page, 'Character Studio');
+    await generateOne(page, { subtypeIndex: 1 }); // enemy (subtype overridden to boss below)
+    await page.evaluate(() => {
+      const store = window.__gfStore;
+      const boss = store.project.collections.characters[0];
+      boss.subtype = 'boss';
+      boss.statistics = boss.statistics.map(s => (s.key === 'Health' ? { ...s, value: '100' } : s.key === 'Defense' ? { ...s, value: '0' } : s));
+      store.touch();
+    });
+    await openModule(page, 'Play Engine');
+
+    await startPlaying(page);
+    const initial = await readScene(page);
+    const bossId = initial.enemies[0].id;
+    const originalDamage = initial.enemies[0].damage;
+
+    await moveTowards(page, s => { const e = s.enemies.find(x => x.id === bossId); return e && e.alive ? e : null; }, 40, 6000);
+    let enraged = false;
+    for (let i = 0; i < 12 && !enraged; i++) {
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(380);
+      const scene = await readScene(page);
+      const boss = scene?.enemies.find(e => e.id === bossId);
+      if (!boss || !boss.alive) break;
+      if (boss.enraged) enraged = true;
+    }
+
+    expect(enraged).toBe(true);
+    const enragedScene = await readScene(page);
+    const boss = enragedScene.enemies.find(e => e.id === bossId);
+    expect(boss.damage).toBeGreaterThan(originalDamage);
+    await expect(page.locator('.toast', { hasText: 'The boss is furious!' })).toBeVisible({ timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
 });

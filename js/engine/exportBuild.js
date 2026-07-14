@@ -16,10 +16,10 @@ const SCENE = window.__EXPORTED_SCENE__;
 const MODE = window.__EXPORTED_MODE__;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const hud = { hp: document.getElementById('hp'), hpFill: document.getElementById('hpFill'), room: document.getElementById('room'), timer: document.getElementById('timer'), items: document.getElementById('items'), enemies: document.getElementById('enemies'), msg: document.getElementById('msg'), overlay: document.getElementById('overlay') };
+const hud = { hp: document.getElementById('hp'), hpFill: document.getElementById('hpFill'), room: document.getElementById('room'), timer: document.getElementById('timer'), items: document.getElementById('items'), enemies: document.getElementById('enemies'), ability: document.getElementById('ability'), msg: document.getElementById('msg'), overlay: document.getElementById('overlay') };
 
 const keys = new Set();
-window.addEventListener('keydown', e => { if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyW','KeyA','KeyS','KeyD'].includes(e.code)) e.preventDefault(); if (!keys.has(e.code)) pressedEdge.add(e.code); keys.add(e.code); });
+window.addEventListener('keydown', e => { if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyW','KeyA','KeyS','KeyD','KeyE'].includes(e.code)) e.preventDefault(); if (!keys.has(e.code)) pressedEdge.add(e.code); keys.add(e.code); });
 window.addEventListener('keyup', e => keys.delete(e.code));
 const pressedEdge = new Set();
 function consumePressed(code) { if (pressedEdge.has(code)) { pressedEdge.delete(code); return true; } return false; }
@@ -43,6 +43,41 @@ function drawHumanoid(entity, pose) {
   ctx.restore();
 }
 function drawHealthBar(entity, pct) { const barY = entity.y - 8; ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(entity.x, barY, entity.w, 4); ctx.fillStyle = pct>0.5?'#22c55e':pct>0.25?'#f59e0b':'#dc2626'; ctx.fillRect(entity.x, barY, entity.w*Math.max(0,pct), 4); }
+const STATUS_COLORS = { Burning: '#f97316', Poisoned: '#84cc16', Stunned: '#eab308', Shielded: '#38bdf8' };
+function drawStatusBadges(entity) {
+  const effects = entity.statusEffects;
+  if (!effects || !effects.length) return;
+  const y = entity.y - 14;
+  effects.forEach(function(s, i) { ctx.fillStyle = STATUS_COLORS[s.type] || '#94a3b8'; ctx.beginPath(); ctx.arc(entity.x + 6 + i*10, y, 3, 0, Math.PI*2); ctx.fill(); });
+}
+
+// Mirrors js/engine/statusEffects.js — real DoT/stun/shield simulation, not
+// window dressing, kept in lockstep with the Studio's Play Engine.
+function applyStatus(entity, type, opts) {
+  opts = opts || {};
+  entity.statusEffects = entity.statusEffects || [];
+  const existing = entity.statusEffects.find(function(s) { return s.type === type; });
+  if (existing) { existing.duration = Math.max(existing.duration, opts.duration || existing.duration); if (opts.shieldHp) existing.shieldHp = Math.max(existing.shieldHp || 0, opts.shieldHp); return; }
+  entity.statusEffects.push({ type: type, duration: opts.duration || 4, tickTimer: 0, dps: opts.dps || 0, shieldHp: opts.shieldHp || 0 });
+}
+function tickStatusEffects(entity, dt, onDamage) {
+  if (!entity.statusEffects || !entity.statusEffects.length) return { stunned: false };
+  let stunned = false;
+  entity.statusEffects = entity.statusEffects.filter(function(s) {
+    s.duration -= dt;
+    if (s.type === 'Burning' || s.type === 'Poisoned') { s.tickTimer -= dt; if (s.tickTimer <= 0) { s.tickTimer = 1; onDamage(s.dps); } }
+    if (s.type === 'Stunned') stunned = true;
+    return s.duration > 0;
+  });
+  return { stunned: stunned };
+}
+function absorbDamage(entity, amount) {
+  const shield = (entity.statusEffects || []).find(function(s) { return s.type === 'Shielded' && s.shieldHp > 0; });
+  if (!shield) return amount;
+  const absorbed = Math.min(shield.shieldHp, amount);
+  shield.shieldHp -= absorbed;
+  return amount - absorbed;
+}
 
 let audioCtx = null;
 function beep(opts) {
@@ -73,6 +108,8 @@ function sfxLose() { beep({ freq:220, freqEnd:70, duration:0.6, type:'sawtooth',
 
 const GRAVITY = 1400, TERMINAL_VELOCITY = 900, JUMP_VELOCITY = -520;
 const ATTACK_RANGE = 46, ATTACK_COOLDOWN_MS = 350, ENEMY_ATTACK_RANGE = 30, ENEMY_ATTACK_COOLDOWN_MS = 800;
+const ABILITY_RANGE = 64, ABILITY_COOLDOWN_MS = 4000, ABILITY_DAMAGE_MULT = 1.8, ABILITY_BURN_DPS = 5, ABILITY_BURN_DURATION = 4;
+const BOSS_ENRAGE_HP_PCT = 0.3, BOSS_ENRAGE_DAMAGE_MULT = 1.5, BOSS_ENRAGE_SPEED_MULT = 1.3;
 
 let status = 'playing';
 let lastTs = 0;
@@ -114,6 +151,7 @@ function updateHud() {
   hud.items.textContent = scene.itemsCollected + ' item(s)';
   hud.enemies.textContent = scene.enemies.filter(e=>e.alive).length + '/' + scene.enemies.length + ' enemies';
   hud.room.textContent = scene.roomQueue ? ('Room ' + (scene.roomIndex+1) + '/' + scene.roomQueue.length) : '';
+  hud.ability.textContent = scene.player.abilityCooldown > 0 ? ('✨ ' + scene.player.abilityName + ': ' + Math.ceil(scene.player.abilityCooldown/1000) + 's') : ('✨ ' + scene.player.abilityName + ': ready (E)');
 }
 
 function endGame(won) {
@@ -126,27 +164,52 @@ function endGame(won) {
 
 function updateArena(dt) {
   const { player, enemies, pickups, arena } = scene;
+  const playerTick = tickStatusEffects(player, dt, function(dmg) { player.hp -= dmg; });
   let dx=0,dy=0;
-  if (keys.has('ArrowLeft')||keys.has('KeyA')) dx-=1;
-  if (keys.has('ArrowRight')||keys.has('KeyD')) dx+=1;
-  if (keys.has('ArrowUp')||keys.has('KeyW')) dy-=1;
-  if (keys.has('ArrowDown')||keys.has('KeyS')) dy+=1;
+  if (!playerTick.stunned) {
+    if (keys.has('ArrowLeft')||keys.has('KeyA')) dx-=1;
+    if (keys.has('ArrowRight')||keys.has('KeyD')) dx+=1;
+    if (keys.has('ArrowUp')||keys.has('KeyW')) dy-=1;
+    if (keys.has('ArrowDown')||keys.has('KeyS')) dy+=1;
+  }
   if (dx||dy) { const len=Math.hypot(dx,dy)||1; player.x += (dx/len)*player.speed*dt; player.y += (dy/len)*player.speed*dt; clampToBounds(player, arena); player.walkPhase = (player.walkPhase||0) + dt*3; player.facing = dx !== 0 ? (dx>0?1:-1) : (player.facing||1); }
   if (player.attackCooldown>0) player.attackCooldown -= dt*1000;
   if (player.attackFlash>0) player.attackFlash -= dt*1000;
-  if ((consumePressed('Space')||consumePressed('Enter')) && player.attackCooldown<=0) {
+  if (player.abilityCooldown>0) player.abilityCooldown -= dt*1000;
+  if (!playerTick.stunned && (consumePressed('Space')||consumePressed('Enter')) && player.attackCooldown<=0) {
     player.attackCooldown = ATTACK_COOLDOWN_MS; player.attackFlash = 120;
     let hitAny = false, defeatedAny = false;
-    for (const e of enemies) if (e.alive && centerDistance(player,e) <= ATTACK_RANGE) { hitAny = true; e.hp -= Math.max(1, player.damage - (e.defense||0)); e.hitFlash=150; if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); } }
+    for (const e of enemies) if (e.alive && centerDistance(player,e) <= ATTACK_RANGE) { hitAny = true; const dmg = absorbDamage(e, Math.max(1, player.damage - (e.defense||0))); e.hp -= dmg; e.hitFlash=150; if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); } }
     if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
     if (hitAny || defeatedAny) sfxAttack();
+  }
+  if (!playerTick.stunned && consumePressed('KeyE') && player.abilityCooldown<=0) {
+    player.abilityCooldown = ABILITY_COOLDOWN_MS; player.attackFlash = 150;
+    let hitAny = false, defeatedAny = false;
+    for (const e of enemies) if (e.alive && centerDistance(player,e) <= ABILITY_RANGE) {
+      hitAny = true;
+      const dmg = absorbDamage(e, Math.max(1, Math.round(player.damage*ABILITY_DAMAGE_MULT) - (e.defense||0)));
+      e.hp -= dmg; e.hitFlash=150;
+      applyStatus(e, 'Burning', { dps: ABILITY_BURN_DPS, duration: ABILITY_BURN_DURATION });
+      if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); }
+    }
+    if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+    showMessage('✨ ' + player.abilityName + '!');
   }
   for (const e of enemies) {
     if (!e.alive) continue;
     if (e.hitFlash>0) e.hitFlash -= dt*1000;
+    const enemyTick = tickStatusEffects(e, dt, function(dmg) { e.hp -= dmg; if (e.hp<=0) { e.alive=false; fireScriptEvent('enemyDefeated'); } });
+    if (!e.alive) continue;
+    if (e.subtype === 'boss' && !e.enraged && e.hp/e.maxHp <= BOSS_ENRAGE_HP_PCT) {
+      e.enraged = true; e.damage = Math.round(e.damage*BOSS_ENRAGE_DAMAGE_MULT); e.speed = Math.round(e.speed*BOSS_ENRAGE_SPEED_MULT);
+      showMessage(e.name + ' enters an enrage phase!');
+      fireScriptEvent('bossEnraged');
+    }
+    if (enemyTick.stunned) continue;
     const d = centerDistance(e, player);
     if (d > ENEMY_ATTACK_RANGE) { const ang = Math.atan2((player.y+player.h/2)-(e.y+e.h/2), (player.x+player.w/2)-(e.x+e.w/2)); e.x += Math.cos(ang)*e.speed*dt; e.y += Math.sin(ang)*e.speed*dt; clampToBounds(e, arena); e.walkPhase = (e.walkPhase||0) + dt*3; }
-    else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS; player.hp -= Math.max(1, e.damage - player.defense); sfxDamaged(); fireScriptEvent('playerDamaged'); } }
+    else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS; const dmg = absorbDamage(player, Math.max(1, e.damage - player.defense)); player.hp -= dmg; sfxDamaged(); fireScriptEvent('playerDamaged'); } }
   }
   for (const p of pickups) { if (p.collected) continue; if (rectsOverlap(player,p)) { p.collected=true; scene.itemsCollected++; if (p.damageBonus) player.damage+=p.damageBonus; if (p.heal) player.hp=Math.min(player.maxHp, player.hp+p.heal); sfxPickup(); fireScriptEvent('itemCollected'); } }
   if (player.hp<=0) { endGame(false); return; }
@@ -169,13 +232,16 @@ function updateArena(dt) {
 
 function updatePlatformer(dt) {
   const { player, enemies, pickups, platforms, groundY, goal } = scene;
+  const playerTick = tickStatusEffects(player, dt, function(dmg) { player.hp -= dmg; });
   let dx=0;
-  if (keys.has('ArrowLeft')||keys.has('KeyA')) dx-=1;
-  if (keys.has('ArrowRight')||keys.has('KeyD')) dx+=1;
+  if (!playerTick.stunned) {
+    if (keys.has('ArrowLeft')||keys.has('KeyA')) dx-=1;
+    if (keys.has('ArrowRight')||keys.has('KeyD')) dx+=1;
+  }
   player.x += dx*player.speed*dt;
   player.x = Math.max(scene.arena.x, Math.min(scene.arena.x+scene.arena.w-player.w, player.x));
   if (dx) { player.walkPhase=(player.walkPhase||0)+dt*3; player.facing = dx>0?1:-1; }
-  if ((consumePressed('Space')||consumePressed('ArrowUp')||consumePressed('KeyW')) && player.onGround) { player.vy = JUMP_VELOCITY; player.onGround=false; sfxJump(); }
+  if (!playerTick.stunned && (consumePressed('Space')||consumePressed('ArrowUp')||consumePressed('KeyW')) && player.onGround) { player.vy = JUMP_VELOCITY; player.onGround=false; sfxJump(); }
   player.vy = Math.min(TERMINAL_VELOCITY, player.vy + GRAVITY*dt);
   player.y += player.vy*dt;
   player.onGround = false;
@@ -183,22 +249,44 @@ function updatePlatformer(dt) {
   for (const p of platforms) { const withinX = player.x+player.w>p.x && player.x<p.x+p.w; if (withinX && player.vy>=0 && player.y+player.h>=p.y && player.y+player.h<=p.y+p.h+12) { player.y=p.y-player.h; player.vy=0; player.onGround=true; } }
   if (player.attackCooldown>0) player.attackCooldown -= dt*1000;
   if (player.attackFlash>0) player.attackFlash -= dt*1000;
-  if (consumePressed('Enter') && player.attackCooldown<=0) {
+  if (player.abilityCooldown>0) player.abilityCooldown -= dt*1000;
+  if (!playerTick.stunned && consumePressed('Enter') && player.attackCooldown<=0) {
     player.attackCooldown = ATTACK_COOLDOWN_MS; player.attackFlash=120;
     let hitAny = false, defeatedAny = false;
-    for (const e of enemies) if (e.alive && centerDistance(player,e)<=ATTACK_RANGE) { hitAny = true; e.hp -= Math.max(1, player.damage-(e.defense||0)); e.hitFlash=150; if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); } }
+    for (const e of enemies) if (e.alive && centerDistance(player,e)<=ATTACK_RANGE) { hitAny = true; const dmg = absorbDamage(e, Math.max(1, player.damage-(e.defense||0))); e.hp -= dmg; e.hitFlash=150; if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); } }
     if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
     if (hitAny || defeatedAny) sfxAttack();
+  }
+  if (!playerTick.stunned && consumePressed('KeyE') && player.abilityCooldown<=0) {
+    player.abilityCooldown = ABILITY_COOLDOWN_MS; player.attackFlash = 150;
+    let hitAny = false, defeatedAny = false;
+    for (const e of enemies) if (e.alive && centerDistance(player,e) <= ABILITY_RANGE) {
+      hitAny = true;
+      const dmg = absorbDamage(e, Math.max(1, Math.round(player.damage*ABILITY_DAMAGE_MULT) - (e.defense||0)));
+      e.hp -= dmg; e.hitFlash=150;
+      applyStatus(e, 'Burning', { dps: ABILITY_BURN_DPS, duration: ABILITY_BURN_DURATION });
+      if (e.hp<=0) { e.alive=false; defeatedAny = true; fireScriptEvent('enemyDefeated'); }
+    }
+    if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+    showMessage('✨ ' + player.abilityName + '!');
   }
   for (const e of enemies) {
     if (!e.alive) continue;
     if (e.hitFlash>0) e.hitFlash -= dt*1000;
+    const enemyTick = tickStatusEffects(e, dt, function(dmg) { e.hp -= dmg; if (e.hp<=0) { e.alive=false; fireScriptEvent('enemyDefeated'); } });
+    if (!e.alive) continue;
+    if (e.subtype === 'boss' && !e.enraged && e.hp/e.maxHp <= BOSS_ENRAGE_HP_PCT) {
+      e.enraged = true; e.damage = Math.round(e.damage*BOSS_ENRAGE_DAMAGE_MULT); e.speed = Math.round(e.speed*BOSS_ENRAGE_SPEED_MULT);
+      showMessage(e.name + ' enters an enrage phase!');
+      fireScriptEvent('bossEnraged');
+    }
+    if (enemyTick.stunned) continue;
     e.x += e.patrolDir*e.speed*0.4*dt;
     if (Math.abs(e.x - e.patrolCenter) > 60) e.patrolDir *= -1;
     const overlapping = rectsOverlap(player, e);
     if (overlapping) {
-      if (player.vy > 60 && player.y+player.h - e.y < 16) { e.hp = 0; e.alive=false; player.vy = -300; sfxDefeat(); fireScriptEvent('enemyDefeated'); }
-      else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer=ENEMY_ATTACK_COOLDOWN_MS; player.hp -= Math.max(1, e.damage-player.defense); sfxDamaged(); fireScriptEvent('playerDamaged'); } }
+      if (player.vy > 60 && player.y+player.h - e.y < 16) { const stompDmg = absorbDamage(e, e.maxHp); e.hp -= stompDmg; player.vy = -300; if (e.hp<=0) { e.alive=false; sfxDefeat(); fireScriptEvent('enemyDefeated'); } else sfxHit(); }
+      else { e.attackTimer -= dt*1000; if (e.attackTimer<=0) { e.attackTimer=ENEMY_ATTACK_COOLDOWN_MS; const dmg = absorbDamage(player, Math.max(1, e.damage-player.defense)); player.hp -= dmg; sfxDamaged(); fireScriptEvent('playerDamaged'); } }
     }
   }
   for (const p of pickups) { if (p.collected) continue; if (rectsOverlap(player,p)) { p.collected=true; scene.itemsCollected++; if (p.damageBonus) player.damage+=p.damageBonus; if (p.heal) player.hp=Math.min(player.maxHp, player.hp+p.heal); sfxPickup(); fireScriptEvent('itemCollected'); } }
@@ -217,8 +305,9 @@ function draw() {
     if (scene.goal) { ctx.fillStyle='#facc15'; ctx.fillRect(scene.goal.x, scene.goal.y, scene.goal.w, scene.goal.h); }
   }
   for (const p of scene.pickups) { if (p.collected) continue; ctx.fillStyle = p.damageBonus?'#f59e0b':p.heal?'#22c55e':'#94a3b8'; ctx.fillRect(p.x,p.y,p.w,p.h); }
-  for (const e of scene.enemies) { if (!e.alive) continue; drawHumanoid(e, { walkPhase: e.walkPhase, hit: e.hitFlash, facing: e.patrolDir||1, grounded:true }); drawHealthBar(e, e.hp/e.maxHp); }
+  for (const e of scene.enemies) { if (!e.alive) continue; drawHumanoid(e, { walkPhase: e.walkPhase, hit: e.hitFlash, facing: e.patrolDir||1, grounded:true }); drawHealthBar(e, e.hp/e.maxHp); drawStatusBadges(e); }
   drawHumanoid(scene.player, { walkPhase: scene.player.walkPhase, attacking: scene.player.attackFlash>0 ? 0.5 : 0, hit:0, facing: scene.player.facing||1, grounded: scene.player.onGround !== false });
+  drawStatusBadges(scene.player);
 }
 
 function loop(ts) {
@@ -266,12 +355,12 @@ export function buildStandaloneHTML(scene, mode, title) {
 <body>
 <div id="wrap">
   <h1>${safeTitle}</h1>
-  <p class="hint">${mode === 'platformer' ? 'A/D or arrows to move, W/Up/Space to jump, Enter to attack. Stomp enemies from above or reach the yellow goal.' : 'WASD/arrows to move, Space to attack.'} Exported standalone from GameForge Studio — no server or install needed.</p>
+  <p class="hint">${mode === 'platformer' ? 'A/D or arrows to move, W/Up/Space to jump, Enter to attack, E for your special ability. Stomp enemies from above or reach the yellow goal.' : 'WASD/arrows to move, Space to attack, E for your special ability.'} Exported standalone from GameForge Studio — no server or install needed.</p>
   <div id="stage">
     <canvas id="game" width="800" height="480"></canvas>
     <div id="hudbar">
       <div id="hpTrack"><div id="hpFill"></div></div>
-      <span id="hp"></span><span id="room"></span><span id="enemies"></span><span id="items"></span><span id="timer"></span>
+      <span id="hp"></span><span id="room"></span><span id="enemies"></span><span id="items"></span><span id="timer"></span><span id="ability"></span>
     </div>
     <div id="msg"></div>
     <div id="overlay"><h2></h2><p></p></div>

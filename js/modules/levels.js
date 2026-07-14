@@ -41,7 +41,7 @@ const FIELDS = [
   {
     key: 'levelScript', label: 'Level Script (Play Engine)', type: 'textarea', cols: 2,
     placeholder: 'on start: message "Welcome"\non allEnemiesDefeated: message "Area secure!"\non timer 30: damage player 5\non playerHpBelow 20: message "Low health!"',
-    hint: 'A tiny real scripting language the Play Engine runs. One rule per line: "on <trigger>[ <number>]: <action>". Triggers: start, enemyDefeated, allEnemiesDefeated, roomCleared (Arena mode\'s multi-room levels), itemCollected, playerDamaged, timer <seconds>, playerHpBelow <n>. Actions: message "text", heal player <n>, damage player <n>, healEnemies <n>, spawnHeal, winLevel, loseLevel.',
+    hint: 'A tiny real scripting language the Play Engine runs. One rule per line: "on <trigger>[ <number>]: <action>". Triggers: start, enemyDefeated, allEnemiesDefeated, roomCleared (Arena mode\'s multi-room levels), bossEnraged (a boss-subtype enemy drops to <=30% HP), itemCollected, playerDamaged, timer <seconds>, playerHpBelow <n>. Actions: message "text", heal player <n>, damage player <n>, healEnemies <n>, spawnHeal, winLevel, loseLevel.',
   },
 ];
 

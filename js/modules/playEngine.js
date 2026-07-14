@@ -14,16 +14,25 @@ import { createInput } from '../engine/input.js';
 import { rectsOverlap, centerDistance, clampToBounds, applyGravity, resolveVerticalCollision, JUMP_VELOCITY } from '../engine/physics.js';
 import { buildScene } from '../engine/sceneBuilder.js';
 import { pickIntroDialogueNode, renderDialogueOverlay } from '../engine/dialogueRunner.js';
-import { drawHumanoid, drawHealthBar, drawPickupIcon } from '../engine/sprites.js';
+import { drawHumanoid, drawHealthBar, drawPickupIcon, drawStatusBadges } from '../engine/sprites.js';
 import { fireEvent, pollConditions } from '../engine/scripting.js';
 import { buildStandaloneHTML } from '../engine/exportBuild.js';
 import { sfxAttack, sfxHit, sfxDefeat, sfxPickup, sfxJump, sfxDamaged, sfxRoomCleared, sfxWin, sfxLose } from '../engine/audio.js';
+import { applyStatus, tickStatusEffects, absorbDamage } from '../engine/statusEffects.js';
 
 const CANVAS_W = 800, CANVAS_H = 480;
 const ATTACK_RANGE = 46;
 const ATTACK_COOLDOWN_MS = 350;
 const ENEMY_ATTACK_RANGE = 30;
 const ENEMY_ATTACK_COOLDOWN_MS = 800;
+const ABILITY_RANGE = 64;
+const ABILITY_COOLDOWN_MS = 4000;
+const ABILITY_DAMAGE_MULT = 1.8;
+const ABILITY_BURN_DPS = 5;
+const ABILITY_BURN_DURATION = 4;
+const BOSS_ENRAGE_HP_PCT = 0.3;
+const BOSS_ENRAGE_DAMAGE_MULT = 1.5;
+const BOSS_ENRAGE_SPEED_MULT = 1.3;
 
 const MODES = [
   { key: 'arena', label: 'Top-Down Arena' },
@@ -176,11 +185,15 @@ export function mountPlayEngine(container, opts) {
     const { player, enemies, pickups, arena } = scene;
     scene.elapsedMs += dt * 1000;
 
+    const playerTick = tickStatusEffects(player, dt, dmg => { player.hp -= dmg; });
+
     let dx = 0, dy = 0;
-    if (input.isDown('ArrowLeft') || input.isDown('KeyA')) dx -= 1;
-    if (input.isDown('ArrowRight') || input.isDown('KeyD')) dx += 1;
-    if (input.isDown('ArrowUp') || input.isDown('KeyW')) dy -= 1;
-    if (input.isDown('ArrowDown') || input.isDown('KeyS')) dy += 1;
+    if (!playerTick.stunned) {
+      if (input.isDown('ArrowLeft') || input.isDown('KeyA')) dx -= 1;
+      if (input.isDown('ArrowRight') || input.isDown('KeyD')) dx += 1;
+      if (input.isDown('ArrowUp') || input.isDown('KeyW')) dy -= 1;
+      if (input.isDown('ArrowDown') || input.isDown('KeyS')) dy += 1;
+    }
     if (dx || dy) {
       const len = Math.hypot(dx, dy) || 1;
       player.x += (dx / len) * player.speed * dt;
@@ -192,14 +205,16 @@ export function mountPlayEngine(container, opts) {
 
     if (player.attackCooldown > 0) player.attackCooldown -= dt * 1000;
     if (player.attackFlash > 0) player.attackFlash -= dt * 1000;
-    if ((input.consumePressed('Space') || input.consumePressed('Enter')) && player.attackCooldown <= 0) {
+    if (player.abilityCooldown > 0) player.abilityCooldown -= dt * 1000;
+    if (!playerTick.stunned && (input.consumePressed('Space') || input.consumePressed('Enter')) && player.attackCooldown <= 0) {
       player.attackCooldown = ATTACK_COOLDOWN_MS;
       player.attackFlash = 120;
       let hitAny = false, defeatedAny = false;
       for (const e of enemies) {
         if (e.alive && centerDistance(player, e) <= ATTACK_RANGE) {
           hitAny = true;
-          e.hp -= Math.max(1, player.damage - (e.defense || 0));
+          const dmg = absorbDamage(e, Math.max(1, player.damage - (e.defense || 0)));
+          e.hp -= dmg;
           e.hitFlash = 150;
           if (e.hp <= 0) { e.alive = false; defeatedAny = true; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
         }
@@ -208,10 +223,39 @@ export function mountPlayEngine(container, opts) {
       if (hitAny || defeatedAny) sfxAttack();
       if (checkScriptEnd()) return false;
     }
+    if (!playerTick.stunned && input.consumePressed('KeyE') && player.abilityCooldown <= 0) {
+      player.abilityCooldown = ABILITY_COOLDOWN_MS;
+      player.attackFlash = 150;
+      let hitAny = false, defeatedAny = false;
+      for (const e of enemies) {
+        if (e.alive && centerDistance(player, e) <= ABILITY_RANGE) {
+          hitAny = true;
+          const dmg = absorbDamage(e, Math.max(1, Math.round(player.damage * ABILITY_DAMAGE_MULT) - (e.defense || 0)));
+          e.hp -= dmg;
+          e.hitFlash = 150;
+          applyStatus(e, 'Burning', { dps: ABILITY_BURN_DPS, duration: ABILITY_BURN_DURATION });
+          if (e.hp <= 0) { e.alive = false; defeatedAny = true; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
+        }
+      }
+      if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+      toast(`✨ ${player.abilityName}!`, { type: 'info' });
+      if (checkScriptEnd()) return false;
+    }
 
     for (const e of enemies) {
       if (!e.alive) continue;
       if (e.hitFlash > 0) e.hitFlash -= dt * 1000;
+      const enemyTick = tickStatusEffects(e, dt, dmg => { e.hp -= dmg; if (e.hp <= 0) { e.alive = false; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); } });
+      if (!e.alive) { if (checkScriptEnd()) return false; continue; }
+      if (e.subtype === 'boss' && !e.enraged && e.hp / e.maxHp <= BOSS_ENRAGE_HP_PCT) {
+        e.enraged = true;
+        e.damage = Math.round(e.damage * BOSS_ENRAGE_DAMAGE_MULT);
+        e.speed = Math.round(e.speed * BOSS_ENRAGE_SPEED_MULT);
+        toast(`${e.name} enters an enrage phase!`, { type: 'warn' });
+        applyActions(fireEvent(scene.scriptRules, 'bossEnraged'));
+        if (checkScriptEnd()) return false;
+      }
+      if (enemyTick.stunned) continue;
       const d = centerDistance(e, player);
       if (d > ENEMY_ATTACK_RANGE) {
         const ang = Math.atan2((player.y + player.h / 2) - (e.y + e.h / 2), (player.x + player.w / 2) - (e.x + e.w / 2));
@@ -223,7 +267,8 @@ export function mountPlayEngine(container, opts) {
         e.attackTimer -= dt * 1000;
         if (e.attackTimer <= 0) {
           e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS;
-          player.hp -= Math.max(1, e.damage - player.defense);
+          const dmg = absorbDamage(player, Math.max(1, e.damage - player.defense));
+          player.hp -= dmg;
           sfxDamaged();
           applyActions(fireEvent(scene.scriptRules, 'playerDamaged'));
           if (checkScriptEnd()) return false;
@@ -276,13 +321,17 @@ export function mountPlayEngine(container, opts) {
     const { player, enemies, pickups, platforms, groundY, goal, arena } = scene;
     scene.elapsedMs += dt * 1000;
 
+    const playerTick = tickStatusEffects(player, dt, dmg => { player.hp -= dmg; });
+
     let dx = 0;
-    if (input.isDown('ArrowLeft') || input.isDown('KeyA')) dx -= 1;
-    if (input.isDown('ArrowRight') || input.isDown('KeyD')) dx += 1;
+    if (!playerTick.stunned) {
+      if (input.isDown('ArrowLeft') || input.isDown('KeyA')) dx -= 1;
+      if (input.isDown('ArrowRight') || input.isDown('KeyD')) dx += 1;
+    }
     player.x = Math.max(arena.x, Math.min(arena.x + arena.w - player.w, player.x + dx * player.speed * dt));
     if (dx) { player.walkPhase = (player.walkPhase || 0) + dt * 3; player.facing = dx > 0 ? 1 : -1; }
 
-    if ((input.consumePressed('Space') || input.consumePressed('ArrowUp') || input.consumePressed('KeyW')) && player.onGround) {
+    if (!playerTick.stunned && (input.consumePressed('Space') || input.consumePressed('ArrowUp') || input.consumePressed('KeyW')) && player.onGround) {
       player.vy = JUMP_VELOCITY;
       player.onGround = false;
       sfxJump();
@@ -293,14 +342,16 @@ export function mountPlayEngine(container, opts) {
 
     if (player.attackCooldown > 0) player.attackCooldown -= dt * 1000;
     if (player.attackFlash > 0) player.attackFlash -= dt * 1000;
-    if (input.consumePressed('Enter') && player.attackCooldown <= 0) {
+    if (player.abilityCooldown > 0) player.abilityCooldown -= dt * 1000;
+    if (!playerTick.stunned && input.consumePressed('Enter') && player.attackCooldown <= 0) {
       player.attackCooldown = ATTACK_COOLDOWN_MS;
       player.attackFlash = 120;
       let hitAny = false, defeatedAny = false;
       for (const e of enemies) {
         if (e.alive && centerDistance(player, e) <= ATTACK_RANGE) {
           hitAny = true;
-          e.hp -= Math.max(1, player.damage - (e.defense || 0));
+          const dmg = absorbDamage(e, Math.max(1, player.damage - (e.defense || 0)));
+          e.hp -= dmg;
           e.hitFlash = 150;
           if (e.hp <= 0) { e.alive = false; defeatedAny = true; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
         }
@@ -309,24 +360,56 @@ export function mountPlayEngine(container, opts) {
       if (hitAny || defeatedAny) sfxAttack();
       if (checkScriptEnd()) return false;
     }
+    if (!playerTick.stunned && input.consumePressed('KeyE') && player.abilityCooldown <= 0) {
+      player.abilityCooldown = ABILITY_COOLDOWN_MS;
+      player.attackFlash = 150;
+      let hitAny = false, defeatedAny = false;
+      for (const e of enemies) {
+        if (e.alive && centerDistance(player, e) <= ABILITY_RANGE) {
+          hitAny = true;
+          const dmg = absorbDamage(e, Math.max(1, Math.round(player.damage * ABILITY_DAMAGE_MULT) - (e.defense || 0)));
+          e.hp -= dmg;
+          e.hitFlash = 150;
+          applyStatus(e, 'Burning', { dps: ABILITY_BURN_DPS, duration: ABILITY_BURN_DURATION });
+          if (e.hp <= 0) { e.alive = false; defeatedAny = true; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
+        }
+      }
+      if (defeatedAny) sfxDefeat(); else if (hitAny) sfxHit();
+      toast(`✨ ${player.abilityName}!`, { type: 'info' });
+      if (checkScriptEnd()) return false;
+    }
 
     for (const e of enemies) {
       if (!e.alive) continue;
       if (e.hitFlash > 0) e.hitFlash -= dt * 1000;
+      const enemyTick = tickStatusEffects(e, dt, dmg => { e.hp -= dmg; if (e.hp <= 0) { e.alive = false; applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); } });
+      if (!e.alive) { if (checkScriptEnd()) return false; continue; }
+      if (e.subtype === 'boss' && !e.enraged && e.hp / e.maxHp <= BOSS_ENRAGE_HP_PCT) {
+        e.enraged = true;
+        e.damage = Math.round(e.damage * BOSS_ENRAGE_DAMAGE_MULT);
+        e.speed = Math.round(e.speed * BOSS_ENRAGE_SPEED_MULT);
+        toast(`${e.name} enters an enrage phase!`, { type: 'warn' });
+        applyActions(fireEvent(scene.scriptRules, 'bossEnraged'));
+        if (checkScriptEnd()) return false;
+      }
+      if (enemyTick.stunned) { continue; }
       e.x += e.patrolDir * e.speed * 0.4 * dt;
       if (Math.abs(e.x - e.patrolCenter) > 60) e.patrolDir *= -1;
       e.walkPhase = (e.walkPhase || 0) + dt * 3;
       if (rectsOverlap(player, e)) {
         if (player.vy > 60 && player.y + player.h - e.y < 16) {
-          e.hp = 0; e.alive = false; player.vy = -300;
-          sfxDefeat();
-          applyActions(fireEvent(scene.scriptRules, 'enemyDefeated'));
+          const stompDmg = absorbDamage(e, e.maxHp);
+          e.hp -= stompDmg;
+          player.vy = -300;
+          if (e.hp <= 0) { e.alive = false; sfxDefeat(); applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); }
+          else sfxHit();
           if (checkScriptEnd()) return false;
         } else {
           e.attackTimer -= dt * 1000;
           if (e.attackTimer <= 0) {
             e.attackTimer = ENEMY_ATTACK_COOLDOWN_MS;
-            player.hp -= Math.max(1, e.damage - player.defense);
+            const dmg = absorbDamage(player, Math.max(1, e.damage - player.defense));
+            player.hp -= dmg;
             sfxDamaged();
             applyActions(fireEvent(scene.scriptRules, 'playerDamaged'));
             if (checkScriptEnd()) return false;
@@ -380,6 +463,9 @@ export function mountPlayEngine(container, opts) {
     hud.enemiesText.textContent = `${scene.enemies.filter(e => e.alive).length}/${scene.enemies.length} enemies`;
     hud.roomText.textContent = scene.roomQueue ? `Room ${scene.roomIndex + 1}/${scene.roomQueue.length}` : '';
     hud.roomText.style.display = scene.roomQueue ? '' : 'none';
+    hud.abilityText.textContent = player.abilityCooldown > 0
+      ? `✨ ${player.abilityName}: ${Math.ceil(player.abilityCooldown / 1000)}s`
+      : `✨ ${player.abilityName}: ready (E)`;
   }
 
   function draw() {
@@ -404,6 +490,7 @@ export function mountPlayEngine(container, opts) {
       if (!e.alive) continue;
       drawHumanoid(ctx, e, { walkPhase: e.walkPhase || 0, hit: e.hitFlash > 0 ? 1 : 0, facing: e.patrolDir || 1, grounded: true });
       drawHealthBar(ctx, e, Math.max(0, e.hp / e.maxHp));
+      drawStatusBadges(ctx, e);
     }
 
     const { player } = scene;
@@ -411,6 +498,7 @@ export function mountPlayEngine(container, opts) {
       walkPhase: player.walkPhase || 0, attacking: player.attackFlash > 0 ? 0.5 : 0, hit: 0,
       facing: player.facing || 1, grounded: player.onGround !== false,
     });
+    drawStatusBadges(ctx, player);
     if (player.attackFlash > 0) {
       ctx.strokeStyle = 'rgba(129,140,248,0.8)';
       ctx.beginPath();
@@ -423,9 +511,29 @@ export function mountPlayEngine(container, opts) {
   function turnAttack() {
     const target = scene.enemies.find(e => e.alive && e.id === selectedTargetId) || scene.enemies.find(e => e.alive);
     if (!target) return;
-    const dmg = Math.max(1, scene.player.damage - (target.defense || 0));
+    const dmg = absorbDamage(target, Math.max(1, scene.player.damage - (target.defense || 0)));
     target.hp -= dmg;
     turnLog.unshift(`You hit ${target.name} for ${dmg}.`);
+    if (target.hp <= 0) {
+      target.alive = false;
+      turnLog.unshift(`${target.name} is defeated!`);
+      sfxDefeat();
+      applyActions(fireEvent(scene.scriptRules, 'enemyDefeated'));
+    } else {
+      sfxHit();
+    }
+    resolveTurn();
+  }
+
+  function turnAbility() {
+    if (scene.player.abilityCooldownTurns > 0) { toast(`${scene.player.abilityName} is on cooldown.`, { type: 'warn' }); return; }
+    const target = scene.enemies.find(e => e.alive && e.id === selectedTargetId) || scene.enemies.find(e => e.alive);
+    if (!target) return;
+    scene.player.abilityCooldownTurns = 3;
+    const dmg = absorbDamage(target, Math.max(1, Math.round(scene.player.damage * ABILITY_DAMAGE_MULT) - (target.defense || 0)));
+    target.hp -= dmg;
+    applyStatus(target, 'Burning', { dps: ABILITY_BURN_DPS, duration: ABILITY_BURN_DURATION });
+    turnLog.unshift(`✨ You use ${scene.player.abilityName} on ${target.name} for ${dmg} and set them ablaze!`);
     if (target.hp <= 0) {
       target.alive = false;
       turnLog.unshift(`${target.name} is defeated!`);
@@ -457,6 +565,7 @@ export function mountPlayEngine(container, opts) {
   }
 
   function resolveTurn() {
+    if (scene.player.abilityCooldownTurns > 0) scene.player.abilityCooldownTurns--;
     if (scene.pendingEnd) { endGame(scene.pendingEnd === 'won'); return; }
     if (scene.enemies.length && scene.enemies.every(e => !e.alive)) {
       applyActions(fireEvent(scene.scriptRules, 'allEnemiesDefeated'));
@@ -464,13 +573,31 @@ export function mountPlayEngine(container, opts) {
       endGame(true);
       return;
     }
+    const playerTick = tickStatusEffects(scene.player, 1, dmg => { scene.player.hp -= dmg; turnLog.unshift(`You take ${dmg} damage over time.`); });
+    if (scene.player.hp <= 0) { endGame(false); return; }
     for (const e of scene.enemies) {
       if (!e.alive) continue;
-      const dmg = Math.max(1, e.damage - scene.player.defense);
+      const enemyTick = tickStatusEffects(e, 1, dmg => { e.hp -= dmg; turnLog.unshift(`${e.name} takes ${dmg} damage over time.`); if (e.hp <= 0) { e.alive = false; turnLog.unshift(`${e.name} is defeated!`); applyActions(fireEvent(scene.scriptRules, 'enemyDefeated')); } });
+      if (!e.alive) continue;
+      if (e.subtype === 'boss' && !e.enraged && e.hp / e.maxHp <= BOSS_ENRAGE_HP_PCT) {
+        e.enraged = true;
+        e.damage = Math.round(e.damage * BOSS_ENRAGE_DAMAGE_MULT);
+        turnLog.unshift(`${e.name} enters an enrage phase!`);
+        applyActions(fireEvent(scene.scriptRules, 'bossEnraged'));
+      }
+      if (enemyTick.stunned) { turnLog.unshift(`${e.name} is stunned and skips its turn.`); continue; }
+      if (playerTick.stunned) { turnLog.unshift('You are stunned and cannot react!'); }
+      const dmg = absorbDamage(scene.player, Math.max(1, e.damage - scene.player.defense));
       scene.player.hp -= dmg;
       turnLog.unshift(`${e.name} hits you for ${dmg}.`);
       sfxDamaged();
       applyActions(fireEvent(scene.scriptRules, 'playerDamaged'));
+    }
+    if (scene.enemies.length && scene.enemies.every(e => !e.alive)) {
+      applyActions(fireEvent(scene.scriptRules, 'allEnemiesDefeated'));
+      if (scene.pendingEnd) { endGame(scene.pendingEnd === 'won'); return; }
+      endGame(true);
+      return;
     }
     applyActions(pollConditions(scene.scriptRules, { elapsedSeconds: 0, playerHp: scene.player.hp }));
     if (scene.pendingEnd) { endGame(scene.pendingEnd === 'won'); return; }
@@ -575,11 +702,15 @@ export function mountPlayEngine(container, opts) {
         ]),
       ]));
     } else if (mode === 'turnbased') {
+      const statusIcon = { Burning: '🔥', Poisoned: '☠️', Stunned: '💫', Shielded: '🛡️' };
       const enemyRows = scene.enemies.map(e => h('div', {
         class: `flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${!e.alive ? 'opacity-40 line-through' : selectedTargetId === e.id ? 'border-accent bg-accent-muted' : 'border-surface-3/60'}`,
         onclick: () => { if (e.alive) { selectedTargetId = e.id; renderShell(); } },
       }, [
-        h('span', { class: 'flex-1 text-sm' }, e.name),
+        h('span', { class: 'flex-1 text-sm' }, [
+          e.name + (e.subtype === 'boss' && e.enraged ? ' (Enraged!)' : ''),
+          (e.statusEffects || []).length ? h('span', { class: 'ml-1 text-xs' }, (e.statusEffects || []).map(s => statusIcon[s.type] || '').join('')) : null,
+        ].filter(Boolean)),
         h('div', { class: 'w-24 progress-track' }, [h('div', { class: 'progress-fill', style: `width:${Math.max(0, Math.round((e.hp / e.maxHp) * 100))}%` })]),
         h('span', { class: 'text-xs text-slate-400 w-14 text-right' }, `${Math.max(0, Math.round(e.hp))}/${e.maxHp}`),
       ]));
@@ -590,13 +721,20 @@ export function mountPlayEngine(container, opts) {
       body.appendChild(h('div', { class: 'w-full max-w-2xl flex flex-col gap-4' }, [
         h('p', { class: 'text-xs text-slate-400 text-center' }, scene.roomLabel),
         h('div', { class: 'card p-4 flex flex-col gap-2' }, [
-          h('div', { class: 'flex justify-between text-sm font-medium' }, [h('span', {}, scene.player.name), h('span', {}, `${Math.max(0, Math.round(scene.player.hp))}/${scene.player.maxHp} HP`)]),
+          h('div', { class: 'flex justify-between text-sm font-medium' }, [
+            h('span', {}, [scene.player.name, (scene.player.statusEffects || []).length ? ` ${(scene.player.statusEffects || []).map(s => statusIcon[s.type] || '').join('')}` : '']),
+            h('span', {}, `${Math.max(0, Math.round(scene.player.hp))}/${scene.player.maxHp} HP`),
+          ]),
           h('div', { class: 'progress-track' }, [h('div', { class: 'progress-fill', style: `width:${Math.max(0, Math.round((scene.player.hp / scene.player.maxHp) * 100))}%` })]),
         ]),
         h('div', { class: 'card p-4 flex flex-col gap-2' }, [h('h4', { class: 'label' }, 'Enemies'), ...enemyRows]),
         itemButtons.length ? h('div', { class: 'card p-4 flex flex-col gap-2' }, [h('h4', { class: 'label' }, 'Items'), h('div', { class: 'flex flex-wrap gap-2' }, itemButtons)]) : null,
-        h('div', { class: 'flex gap-2 justify-center' }, [
+        h('div', { class: 'flex gap-2 justify-center flex-wrap' }, [
           h('button', { class: 'btn-primary', onclick: turnAttack }, '⚔ Attack'),
+          h('button', {
+            class: 'btn-secondary', disabled: scene.player.abilityCooldownTurns > 0,
+            onclick: turnAbility,
+          }, scene.player.abilityCooldownTurns > 0 ? `✨ ${scene.player.abilityName} (${scene.player.abilityCooldownTurns})` : `✨ ${scene.player.abilityName}`),
           h('button', { class: 'btn-ghost', onclick: turnFlee }, '🏃 Flee'),
         ]),
         h('div', { class: 'card p-3 max-h-40 overflow-y-auto scroll-thin flex flex-col gap-1' }, turnLog.length
@@ -615,13 +753,14 @@ export function mountPlayEngine(container, opts) {
         timerText: h('span', { class: 'text-xs text-slate-400' }),
         itemsText: h('span', { class: 'text-xs text-slate-400' }),
         enemiesText: h('span', { class: 'text-xs text-slate-400' }),
+        abilityText: h('span', { class: 'text-xs text-slate-400' }),
       };
       const hudBar = h('div', { class: 'absolute top-2 left-2 right-2 card px-3 py-2 flex items-center gap-3 flex-wrap' }, [
         h('div', { class: 'flex flex-col gap-0.5 flex-1 min-w-[140px]' }, [
           h('div', { class: 'progress-track' }, [hud.hpFill]),
           hud.hpText,
         ]),
-        hud.roomText, hud.enemiesText, hud.itemsText, hud.timerText,
+        hud.roomText, hud.enemiesText, hud.itemsText, hud.timerText, hud.abilityText,
       ]);
       stage.appendChild(hudBar);
       body.appendChild(h('p', { class: 'text-xs text-slate-400 -mb-2' }, scene.roomLabel));

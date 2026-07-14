@@ -88,6 +88,22 @@ export function drawHealthBar(ctx, entity, pct) {
   ctx.fillRect(entity.x, barY, entity.w * Math.max(0, pct), 4);
 }
 
+const STATUS_COLORS = { Burning: '#f97316', Poisoned: '#84cc16', Stunned: '#eab308', Shielded: '#38bdf8' };
+
+// A small dotted status readout above each combatant so Burning/Poisoned/
+// Stunned/Shielded are genuinely visible in play, not just internal state.
+export function drawStatusBadges(ctx, entity) {
+  const effects = entity.statusEffects;
+  if (!effects || !effects.length) return;
+  const y = entity.y - 14;
+  effects.forEach((s, i) => {
+    ctx.fillStyle = STATUS_COLORS[s.type] || '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(entity.x + 6 + i * 10, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 export function drawPickupIcon(ctx, pickup) {
   const cx = pickup.x + pickup.w / 2, cy = pickup.y + pickup.h / 2;
   const bob = Math.sin((pickup.__t || 0) * 3) * 2;

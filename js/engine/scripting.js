@@ -12,6 +12,7 @@
 //   enemyDefeated              fires every time any enemy is defeated
 //   allEnemiesDefeated         fires once when the last enemy is defeated
 //   roomCleared                fires every time an Arena-mode multi-room level advances a room
+//   bossEnraged                fires when a boss-subtype enemy drops to <=30% HP and enters its enrage phase
 //   itemCollected              fires every time a pickup is collected
 //   playerDamaged              fires every time the player takes damage
 //   timer <seconds>            fires once when elapsed time reaches <seconds>
