@@ -10,6 +10,9 @@ export const SUBTYPES = AUDIO_TYPES.map(t => ({
   icon: {
     music: '🎵', sfx: '💥', ambience: '🌫️', voice: '🎙️', 'ui-sound': '🔘',
     stinger: '⚡', jingle: '🎺', 'boss-theme': '🐉', 'cutscene-score': '🎬', 'ambient-voice-bed': '👥',
+    leitmotif: '🎼', 'voice-line-set': '🗣️', 'foley-pack': '👞', 'radio-chatter': '📻',
+    'tutorial-narration': '🎓', 'cutscene-dialogue': '💬', 'victory-fanfare': '🏆',
+    'defeat-stinger': '💀', 'weather-ambience': '🌦️', 'crowd-reaction': '📣',
   }[t.key] || '🔊',
 }));
 
@@ -54,6 +57,22 @@ const STINGER_EXTRA = [
 const SYNC_EXTRA = [
   { key: 'syncPoints', label: 'Sync Points', type: 'list', cols: 2, placeholder: 'e.g. 0:12 — camera cut to villain' },
 ];
+const LEITMOTIF_EXTRA = [
+  { key: 'linkedEntityName', label: 'Represents', type: 'text', placeholder: 'e.g. The Ashwalker, The Sunken City' },
+  { key: 'variationNotes', label: 'Variation Notes', type: 'textarea', cols: 2, placeholder: 'How this theme is re-orchestrated across contexts (solo piano in quiet scenes, full orchestra in battle)…' },
+];
+const FOLEY_PACK_EXTRA = [
+  { key: 'surfaceTypes', label: 'Surface Types', type: 'list', placeholder: 'e.g. Grass, Stone, Metal, Water' },
+  { key: 'actionTypes', label: 'Action Types', type: 'list', placeholder: 'e.g. Footstep, Land, Slide' },
+];
+const RADIO_CHATTER_EXTRA = [
+  { key: 'chatterFrequency', label: 'Chatter Frequency', type: 'text', placeholder: 'e.g. Every 60-120s, randomized' },
+  { key: 'factionVoice', label: 'Faction Voice', type: 'relation', target: 'biomes', subtype: 'faction' },
+];
+const CROWD_REACTION_EXTRA = [
+  { key: 'reactionType', label: 'Reaction Type', type: 'select', options: ['Cheer', 'Boo', 'Gasp', 'Silence'] },
+  { key: 'crowdSize', label: 'Crowd Size', type: 'text', placeholder: 'e.g. 500+ layered voices' },
+];
 
 const EXTRA_FIELDS_BY_SUBTYPE = {
   music: MUSIC_EXTRA,
@@ -66,6 +85,16 @@ const EXTRA_FIELDS_BY_SUBTYPE = {
   'ui-sound': UI_SOUND_EXTRA,
   stinger: STINGER_EXTRA,
   jingle: STINGER_EXTRA,
+  leitmotif: LEITMOTIF_EXTRA,
+  'voice-line-set': [...VOICE_EXTRA, { key: 'barkCategory', label: 'Bark Category', type: 'select', options: ['Combat', 'Idle', 'Death', 'Greeting', 'Reaction'] }],
+  'foley-pack': FOLEY_PACK_EXTRA,
+  'radio-chatter': RADIO_CHATTER_EXTRA,
+  'tutorial-narration': [...VOICE_EXTRA, { key: 'pacingNotes', label: 'Pacing Notes', type: 'textarea', cols: 2, placeholder: 'When lines trigger relative to player action, timeout/skip behaviour…' }],
+  'cutscene-dialogue': [...SYNC_EXTRA, { key: 'speakerCount', label: 'Speaker Count', type: 'number' }],
+  'victory-fanfare': STINGER_EXTRA,
+  'defeat-stinger': STINGER_EXTRA,
+  'weather-ambience': [...AMBIENCE_EXTRA, { key: 'weatherType', label: 'Weather Type', type: 'text', placeholder: 'e.g. Rain, Thunderstorm, Blizzard' }],
+  'crowd-reaction': CROWD_REACTION_EXTRA,
 };
 
 function fieldsFor(subtype) {
@@ -88,12 +117,22 @@ const TRIGGER_TEMPLATES = {
   'boss-theme': ['On boss encounter start', 'On boss phase transition', 'On boss enrage'],
   'cutscene-score': ['Underscores a specific cutscene', 'Stings on a scripted camera cut'],
   'ambient-voice-bed': ['Looping in a populated hub area', 'Crossfades with crowd density changes'],
+  leitmotif: ['Plays when the associated character/location is present', 'Woven into the score during related story beats'],
+  'voice-line-set': ['Random idle bark', 'On combat engagement', 'On player action'],
+  'foley-pack': ['Triggered by player/NPC movement animations'],
+  'radio-chatter': ['Random ambient radio/comms chatter', 'Triggered by nearby faction presence'],
+  'tutorial-narration': ['Triggered by first-time player action', 'On tutorial step start'],
+  'cutscene-dialogue': ['Underscores a specific cutscene beat'],
+  'victory-fanfare': ['On level/mission victory', 'On quest completion'],
+  'defeat-stinger': ['On player death', 'On mission failure'],
+  'weather-ambience': ['Crossfades in as weather changes', 'Loops while active weather persists'],
+  'crowd-reaction': ['On player success in view of an audience', 'On player failure in view of an audience'],
 };
 
 export function generateAudio(rng, subtype) {
   const type = AUDIO_TYPES.find(t => t.key === subtype) || AUDIO_TYPES[0];
   const triggers = TRIGGER_TEMPLATES[type.key] || TRIGGER_TEMPLATES.sfx;
-  const isMusical = ['music', 'ambience', 'boss-theme', 'cutscene-score', 'ambient-voice-bed'].includes(type.key);
+  const isMusical = ['music', 'ambience', 'boss-theme', 'cutscene-score', 'ambient-voice-bed', 'leitmotif', 'weather-ambience'].includes(type.key);
   const entry = {
     name: `${type.label} Cue`,
     description: `${type.label} entry ready for composition/implementation.`,
@@ -119,7 +158,15 @@ export function generateAudio(rng, subtype) {
   }
   if (type.key === 'voice') { entry.lineCount = 8; entry.emotionDirection = pick(['Weary but resolute', 'Barely-contained panic', 'Dry, sardonic', 'Warm and reassuring'], rng); }
   if (type.key === 'ui-sound') { entry.debounceMs = 80; entry.priority = 'Normal'; }
-  if (type.key === 'stinger' || type.key === 'jingle') entry.blendsWithMusic = pick(['Yes — matches key/tempo', 'No — cuts through intentionally'], rng);
+  if (type.key === 'stinger' || type.key === 'jingle' || type.key === 'victory-fanfare' || type.key === 'defeat-stinger') entry.blendsWithMusic = pick(['Yes — matches key/tempo', 'No — cuts through intentionally'], rng);
+  if (type.key === 'leitmotif') { entry.linkedEntityName = 'A recurring story figure or location.'; entry.variationNotes = 'Re-orchestrated sparsely in quiet scenes, fully in climactic ones.'; }
+  if (type.key === 'voice-line-set') { entry.lineCount = 6; entry.emotionDirection = pick(['Weary but resolute', 'Barely-contained panic', 'Dry, sardonic', 'Warm and reassuring'], rng); entry.barkCategory = pick(['Combat', 'Idle', 'Death', 'Greeting', 'Reaction'], rng); }
+  if (type.key === 'foley-pack') { entry.surfaceTypes = ['Grass', 'Stone', 'Metal', 'Water']; entry.actionTypes = ['Footstep', 'Land', 'Slide']; }
+  if (type.key === 'radio-chatter') entry.chatterFrequency = 'Every 60-120s, randomized.';
+  if (type.key === 'tutorial-narration') { entry.lineCount = 4; entry.emotionDirection = 'Clear and encouraging'; entry.pacingNotes = 'Triggers on first attempt at the mechanic; skips if already completed.'; }
+  if (type.key === 'cutscene-dialogue') { entry.syncPoints = ['0:00 — scene opens', '0:15 — key line']; entry.speakerCount = 2; }
+  if (type.key === 'weather-ambience') { entry.layerDensity = '3 layers: base weather bed, gusts/thunder one-shots, transition swell'; entry.distanceFalloff = 'Muffled indoors, full-strength outdoors.'; entry.weatherType = 'Rain'; }
+  if (type.key === 'crowd-reaction') { entry.reactionType = pick(['Cheer', 'Boo', 'Gasp', 'Silence'], rng); entry.crowdSize = '500+ layered voices'; }
   entry.links = {};
   return entry;
 }
@@ -146,10 +193,16 @@ function generateUISoundKitEntry(rng, index) {
   return { ...base, subtype: 'ui-sound' };
 }
 
+function generateOutcomeStingerPair(rng, index) {
+  const subtype = index % 2 === 0 ? 'victory-fanfare' : 'defeat-stinger';
+  return { ...generateAudio(rng, subtype), subtype };
+}
+
 const GENERATORS = [
   { label: 'Generate Audio Entry', run: ({ subtype }) => generateAudio(rngFor(Math.random()), subtype || 'sfx') },
   { label: 'Generate Adaptive Music Layer Set (4 layers)', run: ({ index }) => generateAdaptiveLayerEntry(rngFor(Math.random() + index), index || 0) },
   { label: 'Generate Full UI Sound Kit (5 cues)', run: ({ index }) => generateUISoundKitEntry(rngFor(Math.random() + index), index || 0) },
+  { label: 'Generate Victory/Defeat Stinger Pair (2 cues)', run: ({ index }) => generateOutcomeStingerPair(rngFor(Math.random() + index), index || 0) },
 ];
 
 export function mountAudio(container, opts) {
@@ -165,7 +218,7 @@ export function mountAudio(container, opts) {
       category: 'audio', estimateHours: 2, title: (i) => `Produce audio: ${i.name}`,
       description: `Compose/record and implement "${item.name}".`,
     }),
-    helpText: 'Music, sound effects, ambience, voice direction, UI sounds, stingers, jingles, boss themes, cutscene scores and ambient voice beds — with triggers linked to the characters, items, levels and abilities that fire them. Use the adaptive-layer and full-kit generators to draft a coherent multi-cue set in one click.',
+    helpText: 'Music, sound effects, ambience, voice direction, UI sounds, stingers, jingles, boss themes, cutscene scores, ambient voice beds, leitmotifs, voice line sets, foley packs, radio chatter, tutorial narration, cutscene dialogue, victory fanfares, defeat stingers, weather ambience and crowd reactions — with triggers linked to the characters, items, levels and abilities that fire them. Use the adaptive-layer, full-kit and stinger-pair generators to draft a coherent multi-cue set in one click.',
   });
   return view.mount(container, opts);
 }

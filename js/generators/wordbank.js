@@ -250,6 +250,16 @@ export const AUDIO_TYPES = [
   { key: 'boss-theme', label: 'Boss Theme' },
   { key: 'cutscene-score', label: 'Cutscene Score' },
   { key: 'ambient-voice-bed', label: 'Crowd / Ambient Voice Bed' },
+  { key: 'leitmotif', label: 'Leitmotif' },
+  { key: 'voice-line-set', label: 'Voice Line Set' },
+  { key: 'foley-pack', label: 'Foley Pack' },
+  { key: 'radio-chatter', label: 'Radio Chatter' },
+  { key: 'tutorial-narration', label: 'Tutorial Narration' },
+  { key: 'cutscene-dialogue', label: 'Cutscene Dialogue' },
+  { key: 'victory-fanfare', label: 'Victory Fanfare' },
+  { key: 'defeat-stinger', label: 'Defeat Stinger' },
+  { key: 'weather-ambience', label: 'Weather Ambience' },
+  { key: 'crowd-reaction', label: 'Crowd Reaction' },
 ];
 
 export const MOODS = ['Tense', 'Triumphant', 'Melancholic', 'Whimsical', 'Foreboding', 'Serene', 'Chaotic', 'Nostalgic', 'Heroic', 'Eerie',
