@@ -38,6 +38,11 @@ const FIELDS = [
   { key: 'proceduralRules', label: 'Procedural Generation Rules', type: 'textarea', cols: 2 },
   { key: 'enemies', label: 'Enemies Present', type: 'relation-multi', target: 'characters' },
   { key: 'lootTable', label: 'Loot Table', type: 'relation-multi', target: 'items' },
+  {
+    key: 'levelScript', label: 'Level Script (Play Engine)', type: 'textarea', cols: 2,
+    placeholder: 'on start: message "Welcome"\non allEnemiesDefeated: message "Area secure!"\non timer 30: damage player 5\non playerHpBelow 20: message "Low health!"',
+    hint: 'A tiny real scripting language the Play Engine runs. One rule per line: "on <trigger>[ <number>]: <action>". Triggers: start, enemyDefeated, allEnemiesDefeated, itemCollected, playerDamaged, timer <seconds>, playerHpBelow <n>. Actions: message "text", heal player <n>, damage player <n>, healEnemies <n>, spawnHeal, winLevel, loseLevel.',
+  },
 ];
 
 const EXTRA_FIELDS_BY_SUBTYPE = {
@@ -155,7 +160,7 @@ export function mountLevels(container, opts) {
     key: 'levels', singular: 'Level', plural: 'Levels', icon: '🗺️',
     subtypes: SUBTYPES,
     fields: fieldsFor,
-    makeDefaults: () => ({ rooms: [], objectives: [], events: [], secrets: [], puzzles: [], checkpoints: [], backtrackShortcuts: [] }),
+    makeDefaults: () => ({ rooms: [], objectives: [], events: [], secrets: [], puzzles: [], checkpoints: [], backtrackShortcuts: [], levelScript: '' }),
     cardBadges: badgeFor,
     cardMeta,
     generators: GENERATORS,

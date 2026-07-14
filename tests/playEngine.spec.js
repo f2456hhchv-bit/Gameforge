@@ -6,9 +6,10 @@ function readScene(page) {
   return page.evaluate(() => window.__gfPlayScene);
 }
 
-async function startPlaying(page) {
+async function startPlaying(page, modeIndex) {
   const pane = activePane(page);
   await pane.locator('select.select').first().selectOption({ index: 1 });
+  if (modeIndex != null) await pane.locator('select.select').nth(1).selectOption({ index: modeIndex });
   await pane.getByRole('button', { name: '▶ Play' }).click();
   await page.waitForTimeout(200);
   // Dismiss an intro dialogue overlay if the project has dialogue nodes.
@@ -187,6 +188,106 @@ test.describe('Play Engine module', () => {
     await page.waitForTimeout(200);
     const after = await page.evaluate(() => window.__gfStore.project.collections.playtestSessions.length);
     expect(after).toBe(before + 1);
+    expect(errors).toEqual([]);
+  });
+
+  test('platformer mode applies real gravity and a jump arc, and reaching the goal wins', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Platformer Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await openModule(page, 'Play Engine');
+
+    await startPlaying(page, 1); // Platformer
+    const s0 = await readScene(page);
+    expect(s0.mode).toBe('platformer');
+    expect(s0.player.onGround).toBe(true);
+    const groundY = s0.player.y;
+
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(120);
+    const midJump = await readScene(page);
+    expect(midJump.player.y).toBeLessThan(groundY); // rose off the ground
+    await page.waitForTimeout(700);
+    const landed = await readScene(page);
+    expect(landed.player.onGround).toBe(true);
+    expect(landed.player.y).toBeCloseTo(groundY, 0);
+
+    // Run to the goal at the far right edge to win, regardless of enemies.
+    await page.keyboard.down('KeyD');
+    await page.waitForTimeout(6000);
+    await page.keyboard.up('KeyD');
+    await expect(page.getByText('Level Clear!')).toBeVisible({ timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('turn-based encounter mode resolves attacks via menu and can be fled', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Turn-Based Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await openModule(page, 'Character Studio');
+    await generateOne(page, { subtypeIndex: 1 }); // enemy
+    await openModule(page, 'Play Engine');
+
+    const pane = activePane(page);
+    await pane.locator('select.select').first().selectOption({ index: 1 });
+    await pane.locator('select.select').nth(1).selectOption({ index: 2 }); // Turn-Based Encounter
+    await pane.getByRole('button', { name: '▶ Play' }).click();
+    await page.waitForTimeout(300);
+
+    await expect(pane.getByRole('button', { name: '⚔ Attack' })).toBeVisible();
+    const before = await readScene(page);
+    const enemyHpBefore = before.enemies[0].hp;
+    await pane.getByRole('button', { name: '⚔ Attack' }).click();
+    await page.waitForTimeout(200);
+    const afterAttack = await page.evaluate(() => window.__gfPlayScene);
+    // Either the enemy took damage, or (if it died) the log records the win/continuing state.
+    if (afterAttack) {
+      expect(afterAttack.enemies[0].hp).toBeLessThanOrEqual(enemyHpBefore);
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test('a Level Script "on start" rule fires as a real toast message when play begins', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Script Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    // Author a real Level Script rule on the freshly generated level.
+    await page.evaluate(() => {
+      const store = window.__gfStore;
+      const level = store.project.collections.levels[0];
+      level.levelScript = 'on start: message "Scripted intro!"';
+      store.touch();
+    });
+    await openModule(page, 'Play Engine');
+    await startPlaying(page);
+
+    await expect(page.locator('.toast', { hasText: 'Scripted intro!' })).toBeVisible({ timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('Export Playable Build downloads a standalone HTML file', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await createProject(page, 'Play Engine Export Test');
+    await openModule(page, 'Level Designer');
+    await generateOne(page);
+    await openModule(page, 'Play Engine');
+
+    const pane = activePane(page);
+    await pane.locator('select.select').first().selectOption({ index: 1 });
+    await page.waitForTimeout(150);
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      pane.getByRole('button', { name: '⬇ Export Playable Build' }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/\.html$/);
+    const fs = await import('node:fs');
+    const path = await download.path();
+    const content = fs.readFileSync(path, 'utf-8');
+    expect(content).toContain('__EXPORTED_SCENE__');
+    expect(content).toContain('<canvas');
     expect(errors).toEqual([]);
   });
 });

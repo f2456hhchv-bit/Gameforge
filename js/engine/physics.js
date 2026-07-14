@@ -24,3 +24,35 @@ export function statNum(stats, key, fallback) {
   const n = parseFloat(String(row.value).replace(/[^0-9.\-]/g, ''));
   return Number.isFinite(n) ? n : fallback;
 }
+
+// --- Platformer physics: gravity, jump impulse, ground/platform collision. ---
+export const GRAVITY = 1400; // px/s^2
+export const TERMINAL_VELOCITY = 900; // px/s
+export const JUMP_VELOCITY = -520; // px/s (negative = up)
+
+export function applyGravity(entity, dt) {
+  entity.vy = Math.min(TERMINAL_VELOCITY, (entity.vy || 0) + GRAVITY * dt);
+}
+
+// Resolves vertical position against a flat ground line and a set of solid
+// platform rects (call AFTER moving entity.y by entity.vy*dt), landing the
+// entity on top of whichever it hits. Returns whether the entity is now
+// standing on something (for jump-eligibility).
+export function resolveVerticalCollision(entity, groundY, platforms = []) {
+  let onGround = false;
+  if (entity.y + entity.h >= groundY) {
+    entity.y = groundY - entity.h;
+    entity.vy = 0;
+    onGround = true;
+  }
+  for (const p of platforms) {
+    const withinX = entity.x + entity.w > p.x && entity.x < p.x + p.w;
+    const fallingOntoTop = entity.vy >= 0 && entity.y + entity.h >= p.y && entity.y + entity.h <= p.y + p.h + 12;
+    if (withinX && fallingOntoTop) {
+      entity.y = p.y - entity.h;
+      entity.vy = 0;
+      onGround = true;
+    }
+  }
+  return onGround;
+}
