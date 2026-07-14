@@ -11,6 +11,17 @@ const RARITY_TABLE_WEIGHTS = { Common: 45, Uncommon: 28, Rare: 16, Epic: 7, Lege
 const RARITY_TABLE_TOTAL = Object.values(RARITY_TABLE_WEIGHTS).reduce((a, b) => a + b, 0);
 const COSMETIC_ADJECTIVES = ['Radiant', 'Shadow', 'Gilded', 'Verdant', 'Crimson', 'Obsidian', 'Frostbound', 'Sunlit'];
 const VISUAL_SLOTS = ['Helmet', 'Chest', 'Weapon Skin', 'Mount Skin', 'Back/Cape', 'Emote', 'Full Outfit'];
+const THROWABLE_TYPES = ['Frag Grenade', 'Smoke Bomb', 'Fire Bottle', 'Poison Vial', 'Flashbang', 'Throwing Knife', 'Caltrops', 'Net Trap'];
+const AMMO_TYPES = ['Arrows', 'Bolts', 'Bullets', 'Shells', 'Throwing Darts', 'Sling Stones'];
+const AMMO_QUALITY = ['Standard', 'Piercing', 'Explosive', 'Elemental', 'Silver', 'Cursed'];
+const TOOL_TYPES = ['Lockpick Set', 'Grappling Hook', 'Torch', 'Rope', 'Climbing Pick', 'Diving Mask', 'Compass', 'Spyglass'];
+const GEM_TYPES = ['Ruby', 'Sapphire', 'Emerald', 'Topaz', 'Amethyst', 'Onyx', 'Opal', 'Garnet'];
+const GEM_TIERS = ['Chipped', 'Flawed', 'Regular', 'Flawless', 'Perfect'];
+const DEPLOYABLE_TYPES = ['Sentry Turret', 'War Totem', 'Healing Ward', 'Bear Trap', 'Barricade', 'Decoy'];
+const BANNER_TYPES = ['Guild Banner', 'Victory Trophy', 'War Standard', 'Ceremonial Flag', 'Hunting Trophy'];
+const TRANSPORT_TYPES = ['Rowboat', 'Sailing Ship', 'Wagon', 'Airship', 'Submarine', 'Caravan'];
+const CONTAINER_TYPES = ['Wooden Chest', 'Iron Lockbox', 'Ornate Coffer', 'Reinforced Crate', 'Ancient Urn'];
+const RELIC_NOUNS = ['Shard', 'Crown', 'Reliquary', 'Idol', 'Tablet', 'Sigil', 'Chalice', 'Diadem'];
 
 function openDropRateSimulator() {
   const state = { runs: 1000 };
@@ -55,6 +66,16 @@ export const SUBTYPES = [
   { key: 'mount', label: 'Mount', icon: '🐴' },
   { key: 'cosmetic', label: 'Cosmetic / Skin', icon: '🎭' },
   { key: 'blueprint', label: 'Blueprint / Schematic', icon: '📐' },
+  { key: 'relic', label: 'Relic / Artifact', icon: '🏺' },
+  { key: 'throwable', label: 'Throwable', icon: '💣' },
+  { key: 'ammunition', label: 'Ammunition', icon: '🏹' },
+  { key: 'tool', label: 'Tool / Utility', icon: '🔧' },
+  { key: 'gem', label: 'Gem / Rune', icon: '💎' },
+  { key: 'deployable', label: 'Deployable', icon: '🗼' },
+  { key: 'recipe', label: 'Recipe', icon: '📖' },
+  { key: 'banner', label: 'Banner / Trophy', icon: '🚩' },
+  { key: 'transport', label: 'Transport', icon: '⛵' },
+  { key: 'container', label: 'Container', icon: '📦' },
 ];
 
 const FIELDS = [
@@ -74,6 +95,37 @@ const FIELDS = [
   { key: 'visualSlot', label: 'Visual Slot', type: 'select', options: VISUAL_SLOTS },
 ];
 
+const EXTRA_FIELDS_BY_SUBTYPE = {
+  relic: [{ key: 'relicLore', label: 'Relic Lore', type: 'textarea', cols: 2, placeholder: 'The unique history behind this one-of-a-kind item…' }],
+  throwable: [
+    { key: 'blastRadius', label: 'Blast / Effect Radius', type: 'text', placeholder: 'e.g. 4m' },
+    { key: 'throwRange', label: 'Throw Range', type: 'text', placeholder: 'e.g. 15m' },
+  ],
+  ammunition: [{ key: 'ammoQuality', label: 'Ammo Quality', type: 'select', options: AMMO_QUALITY }],
+  tool: [{ key: 'toolUse', label: 'Tool Use', type: 'text', placeholder: 'e.g. Picks level-1 locks, lights dark areas' }],
+  gem: [
+    { key: 'gemTier', label: 'Gem Tier', type: 'select', options: GEM_TIERS },
+    { key: 'socketBonus', label: 'Socket Bonus (when slotted)', type: 'text', placeholder: 'e.g. +8% critical strike chance' },
+  ],
+  deployable: [
+    { key: 'deployDuration', label: 'Deploy Duration', type: 'text', placeholder: 'e.g. 30s or until destroyed' },
+    { key: 'deployCooldown', label: 'Redeploy Cooldown', type: 'text', placeholder: 'e.g. 45s' },
+  ],
+  banner: [{ key: 'displayLocation', label: 'Display Location', type: 'text', placeholder: 'e.g. Guild hall wall, ship mast' }],
+  transport: [
+    { key: 'crewCapacity', label: 'Crew / Passenger Capacity', type: 'number' },
+    { key: 'transportSpeed', label: 'Speed', type: 'text', placeholder: 'e.g. 12 knots' },
+  ],
+  container: [
+    { key: 'lootTableRef', label: 'Possible Contents', type: 'relation-multi', target: 'items' },
+    { key: 'openMethod', label: 'Open Method', type: 'text', placeholder: 'e.g. Requires a key, bash open, pick the lock' },
+  ],
+};
+
+function fieldsFor(subtype) {
+  return [...FIELDS, ...(EXTRA_FIELDS_BY_SUBTYPE[subtype] || [])];
+}
+
 function badgeFor(item) {
   const s = SUBTYPES.find(s => s.key === item.subtype);
   return [
@@ -85,6 +137,8 @@ function badgeFor(item) {
 const TYPE_NAME_BANK = {
   armor: ARMOR_PIECES, accessory: ACCESSORY_TYPES, consumable: CONSUMABLE_TYPES,
   currency: CURRENCY_TYPES, 'quest-item': QUEST_ITEM_TYPES, mount: MOUNT_TYPES,
+  throwable: THROWABLE_TYPES, ammunition: AMMO_TYPES, tool: TOOL_TYPES,
+  deployable: DEPLOYABLE_TYPES, banner: BANNER_TYPES, transport: TRANSPORT_TYPES, container: CONTAINER_TYPES,
 };
 
 function genericStats(rng, subtype, rarity) {
@@ -112,6 +166,28 @@ function genericStats(rng, subtype, rarity) {
         { key: 'Speed Bonus', value: `+${Math.round((20 + rng() * 40) * mult)}%` },
         { key: 'Stamina', value: String(Math.round((50 + rng() * 100) * mult)) },
       ];
+    case 'throwable':
+      return [
+        { key: 'Damage', value: String(Math.round((15 + rng() * 35) * mult)) },
+        { key: 'Blast Radius', value: `${2 + Math.floor(rng() * 4)}m` },
+      ];
+    case 'ammunition':
+      return [
+        { key: 'Damage Bonus', value: `+${Math.round((5 + rng() * 15) * mult)}%` },
+        { key: 'Stack Size', value: String(Math.round(20 + rng() * 80)) },
+      ];
+    case 'gem':
+      return [{ key: 'Bonus', value: `+${Math.round((3 + rng() * 12) * mult)}%` }];
+    case 'deployable':
+      return [
+        { key: 'Health', value: String(Math.round((50 + rng() * 150) * mult)) },
+        { key: 'Duration', value: `${10 + Math.floor(rng() * 50)}s` },
+      ];
+    case 'transport':
+      return [
+        { key: 'Speed', value: `${Math.round(8 + rng() * 20)} knots` },
+        { key: 'Cargo Capacity', value: String(Math.round(50 + rng() * 450)) },
+      ];
     default:
       return [];
   }
@@ -132,6 +208,17 @@ export function generateItem(rng, subtype) {
     const weaponType = pick(Object.keys(WEAPON_BASE), rng);
     name = `Blueprint: ${weaponType}`;
     description = `A ${rarity.toLowerCase()} schematic that unlocks a new crafting recipe once learned.`;
+  } else if (subtype === 'relic') {
+    name = `${pick(LEGENDARY_TITLES, rng)} ${pick(RELIC_NOUNS, rng)}`;
+    description = `A one-of-a-kind ${rarity.toLowerCase()} relic — narrative-significant, not procedurally re-rollable.`;
+  } else if (subtype === 'gem') {
+    const gemType = pick(GEM_TYPES, rng);
+    name = `${pick(GEM_TIERS, rng)} ${gemType}`;
+    description = `A ${rarity.toLowerCase()} ${gemType.toLowerCase()} that can be socketed into equipment with an open slot.`;
+  } else if (subtype === 'recipe') {
+    const consumableType = pick(CONSUMABLE_TYPES, rng);
+    name = `Recipe: ${consumableType}`;
+    description = `A ${rarity.toLowerCase()} recipe that unlocks crafting of ${consumableType} once learned.`;
   } else {
     const bank = TYPE_NAME_BANK[subtype] || ['Item'];
     const base = pick(bank, rng);
@@ -154,7 +241,23 @@ export function generateItem(rng, subtype) {
     unlocksRecipeFor: '',
     visualSlot,
     links: {},
+    ...extraFieldsFor(rng, subtype),
   };
+}
+
+function extraFieldsFor(rng, subtype) {
+  switch (subtype) {
+    case 'relic': return { relicLore: 'Its true origin is disputed — three different scholars have three different stories.' };
+    case 'throwable': return { blastRadius: `${2 + Math.floor(rng() * 4)}m`, throwRange: `${8 + Math.floor(rng() * 12)}m` };
+    case 'ammunition': return { ammoQuality: pick(AMMO_QUALITY, rng) };
+    case 'tool': return { toolUse: 'Enables an otherwise-inaccessible traversal or interaction option.' };
+    case 'gem': return { gemTier: pick(GEM_TIERS, rng), socketBonus: `+${Math.round(3 + rng() * 12)}% to a linked stat` };
+    case 'deployable': return { deployDuration: `${10 + Math.floor(rng() * 50)}s or until destroyed`, deployCooldown: `${20 + Math.floor(rng() * 40)}s` };
+    case 'banner': return { displayLocation: 'Player home base / guild hall.' };
+    case 'transport': return { crewCapacity: 1 + Math.floor(rng() * 6), transportSpeed: `${Math.round(8 + rng() * 20)} knots` };
+    case 'container': return { lootTableRef: [], openMethod: pick(['Requires a key', 'Bash open', 'Pick the lock', 'Opens freely'], rng) };
+    default: return {};
+  }
 }
 
 const LEGENDARY_SET_SLOTS = ['weapon', 'armor', 'accessory'];
@@ -198,8 +301,8 @@ export function mountItems(container, opts) {
   const view = createCollectionView({
     key: 'items', singular: 'Item', plural: 'Items', icon: '🗡️',
     subtypes: SUBTYPES,
-    fields: FIELDS,
-    makeDefaults: () => ({ rarity: 'Common', statistics: [], affixes: [], enchantments: [], upgradeTree: [], craftedFrom: [], socketSlots: 0, durability: 0 }),
+    fields: fieldsFor,
+    makeDefaults: () => ({ rarity: 'Common', statistics: [], affixes: [], enchantments: [], upgradeTree: [], craftedFrom: [], socketSlots: 0, durability: 0, lootTableRef: [] }),
     cardBadges: badgeFor,
     cardMeta: item => item.description,
     generators: GENERATORS,
@@ -208,7 +311,7 @@ export function mountItems(container, opts) {
       category: 'art', estimateHours: 2, title: (i) => `Create icon/model art: ${i.name}`,
       description: `Art pass for ${item.subtype || 'item'} "${item.name}" (${item.rarity || 'Common'}).`,
     }),
-    helpText: 'Weapons, armour, accessories, consumables, crafting materials, quest items, currencies, mounts, cosmetics/skins and blueprints/schematics — rarity, stats, affixes, item sets, sockets, durability and blueprint recipe unlocks are all fully editable.',
+    helpText: 'Weapons, armour, accessories, consumables, crafting materials, quest items, currencies, mounts, cosmetics/skins, blueprints, relics/artifacts, throwables, ammunition, tools, gems/runes, deployables, recipes, banners/trophies, transports and containers — rarity, stats, affixes, item sets, sockets, durability and recipe unlocks are all fully editable.',
   });
   return view.mount(container, opts);
 }
