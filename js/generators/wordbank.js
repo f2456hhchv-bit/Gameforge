@@ -83,6 +83,7 @@ export const HAZARD_BASE = [
   'Sinkholes', 'Contaminated water sources', 'Sound-triggered rockfalls', 'Feral spirit hauntings',
 ];
 
+export const ACHIEVEMENT_CATEGORIES = ['Standard', 'Speedrun', 'Collection', 'Secret', 'Seasonal', 'Community', 'Challenge', 'Story', 'Multiplayer', 'New Game+'];
 export const MOUNT_TYPES = ['Warhorse', 'Direwolf', 'Griffon', 'Armored Boar', 'Skeletal Steed', 'Giant Lizard', 'Storm Hawk', 'War Elephant', 'Sand Drake', 'Frost Elk'];
 export const PERSONALITY_TRAITS = ['Stoic', 'Loyal', 'Quick-tempered', 'Wry', 'Guarded', 'Idealistic', 'Pragmatic', 'Superstitious', 'Blunt', 'Warm',
   'Ambitious', 'Anxious', 'Fiercely independent', 'Overly formal', 'Reckless', 'Patient', 'Suspicious of strangers', 'Secretly sentimental', 'Competitive', 'Self-deprecating'];
