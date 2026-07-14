@@ -75,7 +75,7 @@ Markdown, JSON, CSV and HTML are native. PDF uses the browser's print pipeline. 
 - `js/schema.js` — collection registry shared across the app.
 - `js/components/collectionView.js` — schema-driven generic list/detail engine reused by 8 of the content modules.
 - `js/components/entityForm.js` — schema-driven field renderer (text/textarea/number/select/tags/list/stats/relation/relation-multi).
-- `js/generators/` — word banks + procedural generation helpers shared by every module and the assistant.
+- `js/generators/` — word banks + procedural generation helpers shared by every module and the assistant. `wordbank.js` alone carries 58 exported arrays/objects; the highest-leverage pools (name syllables, epithets, faction/creature/weapon vocab, lore hooks, quest verbs/targets, art/audio mood & lighting banks) were deliberately grown large so repeated one-click generation keeps producing fresh names, flavor text and prompts rather than visibly cycling.
 - `js/modules/` — one file per module; each exports a `mountX(container, opts)` function registered in `js/modules/registry.js`.
 - `js/taskHooks.js` — shared helper so any module can auto-create a linked production task.
 
