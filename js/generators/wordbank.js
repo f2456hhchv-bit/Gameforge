@@ -237,6 +237,18 @@ export const UI_SCREEN_TYPES = [
   { key: 'game-over', label: 'Game Over / Victory Screen' },
   { key: 'character-creation', label: 'Character Creation' },
   { key: 'quest-log', label: 'Quest Log / Codex' },
+  { key: 'minimap', label: 'Minimap' },
+  { key: 'error-dialog', label: 'Error Dialog' },
+  { key: 'confirmation-dialog', label: 'Confirmation Dialog' },
+  { key: 'item-comparison-tooltip', label: 'Item Comparison Tooltip' },
+  { key: 'crafting-queue', label: 'Crafting Queue' },
+  { key: 'world-map-legend', label: 'World Map Legend' },
+  { key: 'chat-window', label: 'Chat Window' },
+  { key: 'party-frame', label: 'Party Frame' },
+  { key: 'boss-health-overlay', label: 'Boss Health Overlay' },
+  { key: 'subtitle-overlay', label: 'Subtitle Overlay' },
+  { key: 'photo-mode', label: 'Photo Mode UI' },
+  { key: 'accessibility-settings', label: 'Accessibility Settings Panel' },
 ];
 
 export const AUDIO_TYPES = [

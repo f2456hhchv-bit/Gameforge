@@ -50,6 +50,18 @@ const ELEMENTS_BY_TYPE = {
   'game-over': ['Result headline (victory/defeat)', 'Stats summary', 'Retry/Continue button', 'Rewards earned list', 'Share/screenshot button'],
   'character-creation': ['Preview viewport', 'Appearance sliders', 'Preset selector', 'Name input', 'Confirm/Randomize buttons'],
   'quest-log': ['Active/completed tabs', 'Quest list with tracked toggle', 'Objective checklist', 'Rewards preview', 'Map ping button'],
+  'minimap': ['Player position marker', 'Rotating/fixed-north toggle', 'Objective ping', 'Zoom control', 'Fog of war edge'],
+  'error-dialog': ['Error icon', 'Error message + code', 'Retry button', 'Dismiss/OK button'],
+  'confirmation-dialog': ['Warning icon', 'Confirmation message', 'Confirm button', 'Cancel button', 'Don\'t ask again checkbox'],
+  'item-comparison-tooltip': ['Currently-equipped stat column', 'Hovered-item stat column', 'Stat delta highlighting (green/red)', 'Upgrade arrow indicator'],
+  'crafting-queue': ['Queue list', 'Progress bar per item', 'Cancel/reorder controls', 'Time remaining display'],
+  'world-map-legend': ['Icon key', 'Toggleable layer checkboxes', 'Discovered vs undiscovered marker style'],
+  'chat-window': ['Message log', 'Channel tabs (Party/Guild/Global)', 'Text input + send button', 'Emote picker', 'Mute/report option'],
+  'party-frame': ['Party member portraits', 'Health/resource bars per member', 'Status effect icons', 'Ready-check indicator'],
+  'boss-health-overlay': ['Boss name banner', 'Segmented health bar (per phase)', 'Enrage timer', 'Add/minion health sub-bars'],
+  'subtitle-overlay': ['Speaker name label', 'Subtitle text with background scrim', 'Position anchor (bottom-safe-area)', 'Font-size accessibility control'],
+  'photo-mode': ['Camera position/angle controls', 'Filter/color-grade picker', 'Depth of field slider', 'UI-hide toggle', 'Pose/expression selector'],
+  'accessibility-settings': ['Colourblind mode selector', 'Text-to-speech toggle', 'Subtitle size/background slider', 'Input remapping shortcut', 'Motion/flashing-reduction toggle'],
 };
 
 const MENU_FLOW_SEQUENCE = ['main-menu', 'settings', 'character-creation', 'pause'];
@@ -79,9 +91,19 @@ function generateMenuFlowEntry(rng, index) {
   return { ...base, subtype: key };
 }
 
+const HUD_OVERLAY_SEQUENCE = ['hud', 'minimap', 'party-frame', 'boss-health-overlay'];
+
+function generateHudOverlaySetEntry(rng, index) {
+  const key = HUD_OVERLAY_SEQUENCE[index % HUD_OVERLAY_SEQUENCE.length];
+  const base = generateScreen(rng, key);
+  base.description = `Part of the core in-combat HUD overlay set: ${base.description}`;
+  return { ...base, subtype: key };
+}
+
 const GENERATORS = [
   { label: 'Generate Screen', run: ({ subtype }) => generateScreen(rngFor(Math.random()), subtype || UI_SCREEN_TYPES[0].key) },
   { label: 'Generate Full Menu Flow Set (4 screens)', run: ({ index }) => generateMenuFlowEntry(rngFor(Math.random() + index), index || 0) },
+  { label: 'Generate Core HUD Overlay Set (4 screens)', run: ({ index }) => generateHudOverlaySetEntry(rngFor(Math.random() + index), index || 0) },
 ];
 
 export function mountUIDesigner(container, opts) {
@@ -97,7 +119,7 @@ export function mountUIDesigner(container, opts) {
       category: 'code', estimateHours: 4, title: (i) => `Implement UI screen: ${i.name}`,
       description: `Build and wire up the "${item.name}" screen.`,
     }),
-    helpText: 'Menus, HUD, inventory, tutorials, notifications, dialogue, crafting, leaderboards, social, achievements, pause, game-over, character creation and quest log screens — every one with accessibility, controller support, transition, sound-cue, localization and typography notes built in. Use "Generate Full Menu Flow Set" with a count of 4 to draft the whole core menu chain in one click.',
+    helpText: 'Menus, HUD, inventory, tutorials, notifications, dialogue, crafting, leaderboards, social, achievements, pause, game-over, character creation, quest log, minimap, error/confirmation dialogs, item comparison tooltips, crafting queue, world-map legend, chat window, party frame, boss health overlay, subtitle overlay, photo mode and accessibility settings screens — every one with accessibility, controller support, transition, sound-cue, localization and typography notes built in. Use "Generate Full Menu Flow Set" or "Generate Core HUD Overlay Set" with a count of 4 to draft a whole coherent screen chain in one click.',
   });
   return view.mount(container, opts);
 }
