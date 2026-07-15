@@ -1,0 +1,138 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: #05070c; color: #d8dee8;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+#app { height: 100vh; }
+
+.al-wrap {
+  display: flex; flex-direction: column; height: 100%;
+}
+
+/* Top resource bar */
+.al-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; background: #10141d; border-bottom: 1px solid #232a38;
+  flex-wrap: wrap;
+}
+.al-respill {
+  display: flex; align-items: center; gap: 6px;
+  background: #1a2030; border: 1px solid #2c3548; border-radius: 999px;
+  padding: 4px 12px; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.al-respill-low { border-color: #caa23a; color: #f0d28a; }
+.al-respill-crit { border-color: #d0546c; color: #f5a7b6; animation: al-pulse 1s infinite; }
+.al-credits { border-color: #d6b23c; color: #f0d28a; }
+.al-pop { border-color: #6f8ad6; }
+.al-topbar-spacer { flex: 1; }
+.al-topbtn {
+  background: #1e2636; color: #d8dee8; border: 1px solid #303c52;
+  border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px;
+}
+.al-topbtn:hover { background: #283249; }
+.al-topbtn-danger { border-color: #6b3540; }
+.al-topbtn-danger:hover { background: #3a2029; }
+
+@keyframes al-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+/* Game area */
+.al-gamearea { flex: 1; display: flex; min-height: 0; }
+.al-canvaswrap { flex: 1; overflow: auto; background: #05070c; }
+#al-canvas { display: block; cursor: pointer; }
+
+.al-sidepanel {
+  width: 300px; flex-shrink: 0; overflow-y: auto;
+  background: #10141d; border-left: 1px solid #232a38;
+  padding: 14px;
+}
+.al-panel-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: #eef1f6; }
+.al-panel-desc { font-size: 12.5px; color: #97a2b8; margin-bottom: 10px; line-height: 1.4; }
+.al-panel-sub { font-size: 12.5px; color: #b7c0d1; margin: 10px 0 4px; font-weight: 600; }
+.al-panel-hint { font-size: 12px; color: #6f7a8f; font-style: italic; margin: 8px 0; }
+
+.al-crewlist { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.al-crewrow {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #1a2030; border: 1px solid #2c3548; border-radius: 6px;
+  padding: 5px 8px; font-size: 12.5px;
+}
+.al-minibtn {
+  background: #232c3e; color: #cfd6e4; border: 1px solid #3a4560;
+  border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer;
+}
+.al-minibtn:hover { background: #2d3a52; }
+
+.al-actionbtn {
+  display: block; width: 100%; margin-top: 10px;
+  background: #2d4d6e; color: #eaf2fb; border: 1px solid #3d6489;
+  border-radius: 6px; padding: 8px 10px; font-size: 13px; cursor: pointer;
+}
+.al-actionbtn:hover { background: #35597e; }
+.al-actionbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.al-actionbtn.al-secondary { background: #1e2636; border-color: #303c52; }
+.al-actionbtn.al-danger { background: #6e2d38; border-color: #89424d; }
+.al-actionbtn.al-danger:hover { background: #7e3641; }
+
+.al-firebox {
+  background: #2a1418; border: 1px solid #6e2d38; border-radius: 8px;
+  padding: 10px; margin-bottom: 10px;
+}
+.al-fire-label { font-size: 13px; color: #f5a7b6; margin-bottom: 8px; }
+
+.al-roster-list { display: flex; flex-direction: column; gap: 8px; }
+.al-roster-card {
+  background: #1a2030; border: 1px solid #2c3548; border-radius: 8px; padding: 8px 10px;
+}
+.al-roster-injured { border-color: #6e2d38; background: #241820; }
+.al-roster-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.al-roster-name { font-size: 13px; font-weight: 600; }
+.al-roster-status { font-size: 11px; color: #8b96ab; text-transform: capitalize; }
+.al-roster-stats { font-size: 11px; color: #8b96ab; margin-top: 4px; }
+
+.al-statrow { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.al-statlabel { font-size: 10.5px; color: #8b96ab; width: 54px; flex-shrink: 0; }
+.al-stattrack { flex: 1; height: 6px; background: #0e1219; border-radius: 4px; overflow: hidden; }
+.al-statfill { height: 100%; background: linear-gradient(90deg, #4fa3e0, #5fc177); }
+
+/* Build bar */
+.al-buildbar {
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  padding: 8px 12px; background: #0d1119; border-top: 1px solid #232a38;
+}
+.al-buildbar-title { font-size: 12px; color: #8b96ab; margin-right: 4px; }
+.al-build-btn {
+  display: flex; align-items: center; gap: 6px;
+  background: #1a2030; border: 1px solid #2c3548; border-radius: 8px;
+  padding: 6px 10px; color: #d8dee8; cursor: pointer; font-size: 12px;
+  opacity: 0.55;
+}
+.al-build-btn.al-affordable { opacity: 1; }
+.al-build-btn.al-selected { border-color: #6fa8e0; box-shadow: 0 0 0 1px #6fa8e0; }
+.al-build-btn:hover { background: #232c3e; }
+.al-build-btn:disabled { cursor: not-allowed; }
+.al-build-icon { font-size: 14px; }
+.al-build-cost { color: #d6b23c; font-variant-numeric: tabular-nums; }
+
+/* Log feed */
+.al-logfeed {
+  height: 90px; overflow-y: auto; background: #05070c;
+  border-top: 1px solid #1a2030; padding: 6px 14px; font-size: 11.5px;
+}
+.al-log-title { color: #6f7a8f; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.al-log-entry { color: #9aa5ba; padding: 1px 0; }
+
+/* Toasts */
+#al-toast-root {
+  position: fixed; bottom: 100px; right: 16px; z-index: 100;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.al-toast {
+  background: #1a2030; border: 1px solid #2c3548; border-radius: 8px;
+  padding: 8px 14px; font-size: 13px; color: #eaf0fb;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.al-toast-success { border-color: #3f7a4f; }
+.al-toast-error { border-color: #8a3f4c; }
+.al-toast-out { opacity: 0; transform: translateY(6px); }
